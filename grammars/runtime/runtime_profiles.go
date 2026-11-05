@@ -424,8 +424,11 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 	// (internal actual fun f(): String = "x") is now C-exact in production.
 	// Split-drops stays withheld; this recertification did not re-run the
 	// split-drops ledger on the new blob.
+	//
+	// Moved to blob 6dd6ce27 (tree-sitter-kotlin d6af96d2). The full-corpus
+	// sweep has not been re-run on this blob.
 	"kotlin": {
-		blobSHA256:                     mustRuntimeProfileSHA256("8c618126dbd4ed6cdda93b922e574cef500a8d5c9a250d3fc1a345c15b4c7f89"),
+		blobSHA256:                     mustRuntimeProfileSHA256("6dd6ce27c59930f74bc8bded2a4ba2b4f2ec0dd0fe39221f082c69b9251951a9"),
 		externalScannerFullParseRetry:  gotreesitter.ExternalScannerFullParseRetrySkipRepeat,
 		nativeResultCompatibility:      gotreesitter.ResultCompatibilityNativeCollapsedChildren,
 		compactPrimaryAcceptDerivation: true,

@@ -17,7 +17,7 @@ func TestKotlinSwiftExternalScannerSpecs(t *testing.T) {
 	if got, want := kotlinSpec.UpstreamRepo, "https://github.com/fwcd/tree-sitter-kotlin"; got != want {
 		t.Fatalf("kotlin repo = %q, want %q", got, want)
 	}
-	if got, want := kotlinSpec.UpstreamCommit, "1852ea17b7f60fb3f9d84e0b1555d56b46b39fb1"; got != want {
+	if got, want := kotlinSpec.UpstreamCommit, "d6af96d2e23ef0a8ff5ab512864378cf08fba311"; got != want {
 		t.Fatalf("kotlin commit = %q, want %q", got, want)
 	}
 	if got, want := kotlinSpec.Externals, []string{
@@ -31,6 +31,16 @@ func TestKotlinSwiftExternalScannerSpecs(t *testing.T) {
 		"_interpolation_expression_start",
 		"_interpolation_identifier_start",
 		"_by_delegation_hint",
+		"_primary_constructor_hint",
+		"_callable_reference_quest",
+		"_comment_continuation_hint",
+		"_try_clause_hint",
+		"_backing_field_hint",
+		"_expression_end_hint",
+		"_delegate_start_hint",
+		"_delegate_end_hint",
+		"_quoted_identifier",
+		"_call_lambda_hint",
 	}; !slices.Equal(got, want) {
 		t.Fatalf("kotlin externals = %v, want %v", got, want)
 	}

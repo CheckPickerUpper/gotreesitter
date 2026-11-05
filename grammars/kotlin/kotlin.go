@@ -11,7 +11,7 @@ import (
 )
 
 // BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "8c618126dbd4ed6cdda93b922e574cef500a8d5c9a250d3fc1a345c15b4c7f89"
+const BlobSHA256 = "6dd6ce27c59930f74bc8bded2a4ba2b4f2ec0dd0fe39221f082c69b9251951a9"
 
 func init() {
 	grammarruntime.RegisterKotlinSupport()

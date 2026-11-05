@@ -1465,13 +1465,13 @@
     {
       "name": "kotlin",
       "repo": "https://github.com/fwcd/tree-sitter-kotlin",
-      "ref": "1852ea17b7f60fb3f9d84e0b1555d56b46b39fb1",
+      "ref": "d6af96d2e23ef0a8ff5ab512864378cf08fba311",
       "spdx": "MIT",
       "license_name": "MIT License",
       "copyright_holders": [
         "Copyright (c) 2019 fwcd"
       ],
-      "license_file_url": "https://github.com/fwcd/tree-sitter-kotlin/blob/1852ea17b7f60fb3f9d84e0b1555d56b46b39fb1/LICENSE",
+      "license_file_url": "https://github.com/fwcd/tree-sitter-kotlin/blob/d6af96d2e23ef0a8ff5ab512864378cf08fba311/LICENSE",
       "method": "github_license_api",
       "copyleft": false
     },

@@ -2478,9 +2478,9 @@ kdl -- https://github.com/tree-sitter-grammars/tree-sitter-kdl @ b37e3d58e5c5
   Copyright (c) 2023 Amaan Qureshi <amaanq12@gmail.com>, Andrew Hlynskyi <ahlincq@gmail.com>
   License file: https://github.com/tree-sitter-grammars/tree-sitter-kdl/blob/b37e3d58e5c5cf8d739b315d6114e02d42e66664/LICENSE
 
-kotlin -- https://github.com/fwcd/tree-sitter-kotlin @ 1852ea17b7f6
+kotlin -- https://github.com/fwcd/tree-sitter-kotlin @ d6af96d2e23e
   Copyright (c) 2019 fwcd
-  License file: https://github.com/fwcd/tree-sitter-kotlin/blob/1852ea17b7f60fb3f9d84e0b1555d56b46b39fb1/LICENSE
+  License file: https://github.com/fwcd/tree-sitter-kotlin/blob/d6af96d2e23ef0a8ff5ab512864378cf08fba311/LICENSE
 
 ledger -- https://github.com/cbarrete/tree-sitter-ledger @ 96c92d4908a8
   Copyright (c) 2022 Cédric Barreteau
