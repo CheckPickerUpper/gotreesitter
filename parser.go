@@ -8299,7 +8299,13 @@ func (p *Parser) prepareParseStacksForIteration(stacks []glrStack, scratch *pars
 		p.traceCRecoverPrepareStacks("post-cull", result.stacks)
 	}
 	if len(result.stacks) > 1 {
-		if !p.emptyExternalRecoveryEnabled() || !p.errorCostCompetitionEnabled() || !cRecoveryRelevantStack(result.stacks) {
+		// Under packed version order the stacks are C's physical versions in
+		// C's order. C never moves a version ahead of an earlier one outside
+		// condense, and the order decides which reading a merged GSS head
+		// keeps (stack_node_add_link keeps the earlier link), so promotion
+		// would make that choice differ from C.
+		if !p.compactPackedGSSVersionOrderEnabled() &&
+			(!p.emptyExternalRecoveryEnabled() || !p.errorCostCompetitionEnabled() || !cRecoveryRelevantStack(result.stacks)) {
 			p.promotePrimaryStack(result.stacks)
 		}
 	} else {
