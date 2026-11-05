@@ -40,18 +40,15 @@ import (
 // non-whitespace Kotlin text.
 var includedRangesKotlinSpans = [3][2]int{{0, 795}, {883, 1987}, {2019, 3094}}
 
-// TestIncludedRangesKotlinRootParity pins the root symbol against the locked
-// Kotlin C oracle on the included-ranges route, and pins the route's one
-// remaining known divergence so a change surfaces instead of passing
-// silently.
+// TestIncludedRangesKotlinRootParity asserts the root symbol, span, child
+// count and HasError flag against the locked Kotlin C oracle on the
+// included-ranges route.
 //
-// The root kind, span, and child count are hard parity assertions now that
-// the padding scan clips to the included ranges: the parser no longer drops
-// the third included range, and the restored arm member is not needed to
-// reach the right root symbol on this fixture. The root's HasError flag
-// still diverges from the oracle and is pinned, not asserted equal. If a
-// future change closes that divergence too, this test fails and the pin
-// moves to the oracle value.
+// The padding scan clips to the included ranges, so the parser no longer
+// drops the third included range, and the restored arm member is not needed
+// to reach the right root symbol on this fixture. The HasError divergence
+// closed with tree-sitter-kotlin d6af96d2, which reads this fixture without
+// an error, as C does.
 func TestIncludedRangesKotlinRootParity(t *testing.T) {
 	cLang, err := COracleLanguage("kotlin")
 	if err != nil {
@@ -157,10 +154,10 @@ func TestIncludedRangesKotlinRootParity(t *testing.T) {
 		t.Errorf("included-ranges root child count: gotreesitter=%d, want %d (matches C)", got, pinnedChildren)
 	}
 
-	// The one field that still diverges from the oracle. Not asserted as
-	// correct; the pin makes a future change visible instead of silent.
-	if cRoot.HasError() != false || goRoot.HasError() != true {
-		t.Errorf("included-ranges root HasError moved: C=%v gotreesitter=%v, pinned C=false gotreesitter=true",
-			cRoot.HasError(), goRoot.HasError())
+	if cRoot.HasError() {
+		t.Errorf("C oracle root HasError moved: got true, pinned false")
+	}
+	if got, want := goRoot.HasError(), cRoot.HasError(); got != want {
+		t.Errorf("included-ranges root HasError: gotreesitter=%v C=%v", got, want)
 	}
 }

@@ -164,20 +164,17 @@ func TestIncludedRangesKotlinArmMemberNowInert(t *testing.T) {
 	}
 }
 
-// TestIncludedRangesKotlinRootHasErrorPinned pins the route's one remaining
-// known divergence from the C oracle now that the padding scan clips to the
-// included ranges: the root's HasError flag. Every other measured field now
-// matches the C oracle exactly on this fixture: span, child count, and root
-// kind. See TestIncludedRangesKotlinRootParity in
+// TestIncludedRangesKotlinRootMatchesCOracle pins the included-ranges root
+// to the C oracle's receipt on this fixture: span, child count, root kind and
+// HasError. See TestIncludedRangesKotlinRootParity in
 // cgo_harness/included_ranges_kotlin_root_parity_cgo_test.go for the
 // C-oracle receipt these pins came from.
 //
-// Before the padding-scan fix, this test pinned a larger defect: the parse
-// stopped with no live GLR stacks and the root dropped the third included
-// range entirely, ending at byte 1986 instead of 3094. That truncation is
-// gone. If the HasError divergence below ever closes too, update this pin
-// from a fresh C-oracle receipt.
-func TestIncludedRangesKotlinRootHasErrorPinned(t *testing.T) {
+// Before the padding-scan fix, the parse stopped with no live GLR stacks and
+// the root dropped the third included range entirely, ending at byte 1986
+// instead of 3094. Until tree-sitter-kotlin d6af96d2 the root also reported
+// an error where C reports none.
+func TestIncludedRangesKotlinRootMatchesCOracle(t *testing.T) {
 	lang := grammars.KotlinLanguage()
 	if lang == nil {
 		t.Skip("kotlin grammar unavailable")
@@ -212,7 +209,7 @@ func TestIncludedRangesKotlinRootHasErrorPinned(t *testing.T) {
 	if root.IsError() {
 		t.Error("included-ranges root is an ERROR node")
 	}
-	if !root.HasError() {
-		t.Error("included-ranges root reports no error; the pinned value is true while the C oracle reports false — refresh this pin from a fresh C-oracle receipt if this ever flips")
+	if root.HasError() {
+		t.Error("included-ranges root reports an error; the C oracle reports none")
 	}
 }

@@ -24,9 +24,11 @@ import (
 // forcing the grant alone accepted the C-divergent infix_expression until
 // the gate declined that election. tree-sitter-kotlin 1852ea17 (#280,
 // "Prefer class and object declarations over infix expressions") removed
-// the infix derivation. On the current blob, object_declaration_multiline
-// still declines under the shipped profile, at the converged-path-split
-// checkpoint, and accepts C-exact once split-drops is forced.
+// the infix derivation. tree-sitter-kotlin d6af96d2 reads the object a
+// second way again, as an object_literal expression statement:
+// object_declaration_multiline declines under the shipped profile, at the
+// converged-path-split checkpoint, and still declines once split-drops is
+// forced, serving production's C-exact tree.
 // object_declaration_no_body_members ("object S {}") and
 // annotated_declaration accept under both profiles; this sweep adjudicates
 // them C-exact under the shipped profile. No Kotlin witness reaches the

@@ -117,14 +117,14 @@ func TestKotlinA3CertificationObjectDeclarationDeclinesUnderShippedProfileCOracl
 // TestKotlinA3CertificationObjectDeclarationCExactCOracleWhenSplitDropsForced
 // forces CompactConvergedReductionSplitDropsCertified on locally (it is not
 // shipped) and adjudicates the served tree against the locked C oracle.
-// Before tree-sitter-kotlin 1852ea17 (#280), the compact route accepted
-// "object Singleton { fun work() = Unit }" as an infix_expression under
-// both certificates, and selectCompactAcceptanceDerivation's materiality
-// gate (parsercore_phase0_driver.go, compactAcceptanceElectionIsVacuous)
-// had to decline that material election. The upstream grammar removed the
-// infix derivation. The witness has one derivation now, the compact route
-// accepts it, and the accepted tree must stay C-exact. The gate keeps its
-// own receipt in admission_switch_acceptance_frontier_test.go.
+// tree-sitter-kotlin 1852ea17 (#280) left "object Singleton { fun work() =
+// Unit }" one derivation, and the compact route accepted it. The locked
+// grammar (d6af96d2) reads the object a second way, as an object_literal
+// expression statement: C keeps both versions to the end of input and
+// selects the object_declaration. The compact route reaches a converged
+// reduction split whose dropped survivor has no alternative-set coverage,
+// so it declines even with split-drops forced on and serves production's
+// tree, which must stay C-exact.
 func TestKotlinA3CertificationObjectDeclarationCExactCOracleWhenSplitDropsForced(t *testing.T) {
 	gotreesitter.ResetAdmissionCandidateCounters()
 	source := []byte("package demo\n\nobject Singleton {\n    fun work() = Unit\n}\n")
@@ -170,11 +170,11 @@ func TestKotlinA3CertificationObjectDeclarationCExactCOracleWhenSplitDropsForced
 	defer candidateTree.Release()
 
 	routedAfter, fallbackAfter := gotreesitter.AdmissionCandidateCounters()
-	if routedAfter != routedBefore+1 || fallbackAfter != fallbackBefore {
+	if routedAfter != routedBefore || fallbackAfter != fallbackBefore+1 {
 		t.Fatalf(
 			"forced-split-drops candidate route counters before=(%d,%d) after=(%d,%d), want "+
-				"routed+1 only (tree-sitter-kotlin #280 removed the infix derivation, so this witness "+
-				"has no tied election left to decline); reason=%s",
+				"fallback+1 only (the locked grammar reads this witness two ways, and the dropped "+
+				"object_literal survivor has no alternative-set coverage); reason=%s",
 			routedBefore, fallbackBefore, routedAfter, fallbackAfter, gotreesitter.AdmissionCandidateLastFallbackReason(),
 		)
 	}
@@ -183,10 +183,14 @@ func TestKotlinA3CertificationObjectDeclarationCExactCOracleWhenSplitDropsForced
 	compareNodes(candidateTree.RootNode(), goLang, cRoot, "root", &candidateMismatches)
 	if len(candidateMismatches) != 0 {
 		t.Fatalf(
-			"forced-split-drops compact route accepted a tree that diverges from the C oracle at "+
-				"%d point(s):\n%s",
+			"forced-split-drops compact route (declined, serving production's fallback tree) "+
+				"diverges from the C oracle at %d point(s):\n%s",
 			len(candidateMismatches), strings.Join(candidateMismatches, "\n"),
 		)
 	}
-	t.Log("confirmed: with split-drops forced on, the compact route accepts the #93 witness and the accepted tree is C-exact")
+	t.Logf(
+		"confirmed: with split-drops forced on, the compact route declines the #93 witness "+
+			"(reason=%s) and serves production's C-exact tree",
+		gotreesitter.AdmissionCandidateLastFallbackReason(),
+	)
 }
