@@ -8,7 +8,7 @@ func extendParentSpanToWindowForTest(parent *Node, entries []stackEntry, start, 
 
 func extendParentSpanToWindowForSourceTest(parent *Node, entries []stackEntry, start, reducedEnd int, symbolMeta []SymbolMetadata, symbolNames []string, source []byte) {
 	spanExtending, nonSpanExtending := buildInvisibleSpanSymbolTables(symbolNames)
-	extendParentSpanToWindow(parent, entries, start, reducedEnd, symbolMeta, spanExtending, nonSpanExtending, source)
+	extendParentSpanToWindow(parent, entries, start, reducedEnd, symbolMeta, spanExtending, nonSpanExtending, false, source)
 }
 
 func TestRewriteRefreshPreservesProducedSpan(t *testing.T) {
@@ -252,6 +252,39 @@ func TestExtendParentSpanSkipsDiscontiguousPhantom(t *testing.T) {
 
 	if got, want := parent.endByte, uint32(26); got != want {
 		t.Fatalf("parent.endByte = %d, want %d (phantom should not extend)", got, want)
+	}
+}
+
+// TestExtendParentSpanCoversZeroWidthChildPaddingWhenCertified checks that a
+// language certifying ZeroWidthChildPaddingSpanCertified spans the skipped
+// comment before an empty hidden child that ends the parent, as C does, and
+// that a visible zero-width child past the end still never extends it.
+func TestExtendParentSpanCoversZeroWidthChildPaddingWhenCertified(t *testing.T) {
+	source := []byte("package a\n/* x */\nenum class S\n")
+	newParent := func() (*Node, *Node) {
+		core := NewLeafNode(2, true, 0, 9, Point{}, Point{Column: 9})
+		parent := NewParentNode(3, true, []*Node{core}, nil, 0)
+		return parent, core
+	}
+	meta := []SymbolMetadata{{}, {}, {Visible: true}, {}, {Visible: false}, {Visible: true}}
+	names := []string{"", "", "visible", "", "_automatic_semicolon", "visible_empty"}
+	spanExtending, nonSpanExtending := buildInvisibleSpanSymbolTables(names)
+	semicolonPoint := Point{Row: 2, Column: 0}
+
+	parent, core := newParent()
+	hiddenSemicolon := NewLeafNode(4, false, 18, 18, semicolonPoint, semicolonPoint)
+	entries := []stackEntry{newStackEntryNode(0, core), newStackEntryNode(0, hiddenSemicolon)}
+	extendParentSpanToWindow(parent, entries, 0, len(entries), meta, spanExtending, nonSpanExtending, true, source)
+	if parent.endByte != 18 || parent.endPoint != semicolonPoint {
+		t.Fatalf("certified parent ends at %d/%v, want 18/%v", parent.endByte, parent.endPoint, semicolonPoint)
+	}
+
+	parent, core = newParent()
+	visibleEmpty := NewLeafNode(5, true, 18, 18, semicolonPoint, semicolonPoint)
+	entries = []stackEntry{newStackEntryNode(0, core), newStackEntryNode(0, visibleEmpty)}
+	extendParentSpanToWindow(parent, entries, 0, len(entries), meta, spanExtending, nonSpanExtending, true, source)
+	if parent.endByte != 9 {
+		t.Fatalf("visible empty child moved the parent end to %d, want 9", parent.endByte)
 	}
 }
 
@@ -525,7 +558,7 @@ func TestExtendParentSpanIncludesPaddingBeforeEmptyLineEnding(t *testing.T) {
 			meta := []SymbolMetadata{{}, {}, {Visible: true}, {}, {}}
 			names := []string{"", "", "visible", "", "_line_ending_or_eof"}
 			spanExtending, nonSpanExtending := buildInvisibleSpanSymbolTables(names)
-			extendParentSpanToWindow(parent, entries, 0, len(entries), meta, spanExtending, nonSpanExtending, source)
+			extendParentSpanToWindow(parent, entries, 0, len(entries), meta, spanExtending, nonSpanExtending, false, source)
 			if parent.endByte != end || parent.endPoint != (Point{Column: end}) {
 				t.Fatalf("parent ends at %d/%v, want %d/%v", parent.endByte, parent.endPoint, end, Point{Column: end})
 			}

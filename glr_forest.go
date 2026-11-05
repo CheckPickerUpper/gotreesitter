@@ -3784,7 +3784,7 @@ func (p *Parser) parseForestWithMode(arena *nodeArena, source []byte, captureExt
 								rawSpanApplied = true
 							}
 							if !rawSpanApplied && reduceChildPathMayDropSpan(childPath) {
-								extendParentSpanToWindow(parent, children, 0, reducedEnd, lang.SymbolMetadata, p.spanExtendingInvisibleSymbols, p.nonSpanExtendingInvisibleSymbols, source)
+								extendParentSpanToWindow(parent, children, 0, reducedEnd, lang.SymbolMetadata, p.spanExtendingInvisibleSymbols, p.nonSpanExtendingInvisibleSymbols, lang.ZeroWidthChildPaddingSpanCertified, source)
 							}
 						}
 						// Coalescing tracks parser input position, not necessarily the

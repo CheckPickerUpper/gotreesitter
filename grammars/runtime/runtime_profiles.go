@@ -35,6 +35,7 @@ type builtinLanguageRuntimeProfile struct {
 	compactLexerSkippedPrefixTiling     bool
 	exactStackNodeEquivalence           bool
 	compactPackedGSSVersionOrder        bool
+	zeroWidthChildPaddingSpan           bool
 	conflictActionVersionOrder          bool
 	compactStrategy2ErrorRegion         bool
 	compactS3MixedShiftReduceStates     []gotreesitter.StateID
@@ -439,8 +440,8 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 		// testdata/real/kotlin. Locked-C receipts:
 		// TestKotlinCompleteStatementsMatchLockedC, and a 994-file census of
 		// JetBrains/Exposed plus a Kotlin compiler-plugin reader, where Go
-		// error trees that C reads cleanly fall from 292 to 30 and exact
-		// clean trees rise from 622 to 945.
+		// error trees that C reads cleanly fall from 292 to 0 and exact
+		// clean trees rise from 622 to 975.
 		compactPackedGSSVersionOrder: true,
 		// ts_stack_can_merge has no dynamic-precedence term: C merges a
 		// reduction into an earlier version at the same state even when
@@ -450,6 +451,13 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 		// lambda (@A then a<E> {}) reads as a prefix_expression where C
 		// reads a statement annotation.
 		legacyMergeAdmission: gotreesitter.LegacyMergeAdmitDynamicPrecedence,
+		// The automatic-semicolon scanner skips a block comment before an
+		// empty semicolon, and C keeps that comment in the token's padding,
+		// inside the parent the semicolon ends. Without it a block comment
+		// after the package header (package a, /* x */, enum class S) is
+		// left between two parents, recovery wraps it in an ERROR node and
+		// the parse stops at the iteration limit.
+		zeroWidthChildPaddingSpan: true,
 	},
 	// Apex's tied class-literal election matches the C oracle once the
 	// compact route selects the sole primary derivation; the compact tree is
@@ -1093,6 +1101,10 @@ func attachBuiltinLanguageRuntimeProfile(name string, blobSHA256 [32]byte, lang 
 	}
 	if profile.compactPackedGSSVersionOrder && !lang.CompactPackedGSSVersionOrderCertified {
 		lang.CompactPackedGSSVersionOrderCertified = true
+		changed = true
+	}
+	if profile.zeroWidthChildPaddingSpan && !lang.ZeroWidthChildPaddingSpanCertified {
+		lang.ZeroWidthChildPaddingSpanCertified = true
 		changed = true
 	}
 	if profile.compactStrategy2ErrorRegion && !lang.CompactStrategy2ErrorRegionCertified {

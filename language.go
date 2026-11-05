@@ -930,6 +930,14 @@ type Language struct {
 	// the false default.
 	CompactPackedGSSVersionOrderCertified bool
 
+	// ZeroWidthChildPaddingSpanCertified makes a reduced parent span the text
+	// an external scanner skipped before a zero-width hidden child that ends
+	// the parent, as C does by sizing a parent from its children's padding and
+	// size. Exact built-in profiles set this only where the scanner's empty
+	// token starts after the skipped text, as in C. Custom, adapted, and stale
+	// artifacts retain the false default.
+	ZeroWidthChildPaddingSpanCertified bool
+
 	// ConflictActionVersionOrderCertified gives the last conflict action
 	// the source version priority while retaining every alternative. Exact grammar
 	// profiles certify this narrower order without packed deterministic reductions.

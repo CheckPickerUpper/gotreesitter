@@ -4761,7 +4761,7 @@ func (p *Parser) applyReduceActionFromGSS(source []byte, s *glrStack, act ParseA
 	}
 	// Extend parent span to cover invisible children dropped by buildReduceChildren.
 	if reduceChildPathMayDropSpan(childPath) {
-		extendParentSpanToWindow(parent, windowEntries, window.start, window.reducedEnd, p.language.SymbolMetadata, p.spanExtendingInvisibleSymbols, p.nonSpanExtendingInvisibleSymbols, source)
+		extendParentSpanToWindow(parent, windowEntries, window.start, window.reducedEnd, p.language.SymbolMetadata, p.spanExtendingInvisibleSymbols, p.nonSpanExtendingInvisibleSymbols, p.language.ZeroWidthChildPaddingSpanCertified, source)
 	}
 	if timing != nil {
 		timing.reduceSpanNanos += time.Since(spanStart).Nanoseconds()
@@ -4899,7 +4899,7 @@ func (p *Parser) applyReduceActionForked(source []byte, s *glrStack, act ParseAc
 			parent.endPoint = span.endPoint
 		}
 		if reduceChildPathMayDropSpan(childPath) {
-			extendParentSpanToWindow(parent, window, 0, reducedEnd, p.language.SymbolMetadata, p.spanExtendingInvisibleSymbols, p.nonSpanExtendingInvisibleSymbols, source)
+			extendParentSpanToWindow(parent, window, 0, reducedEnd, p.language.SymbolMetadata, p.spanExtendingInvisibleSymbols, p.nonSpanExtendingInvisibleSymbols, p.language.ZeroWidthChildPaddingSpanCertified, source)
 		}
 		*nodeCount++
 
@@ -5325,7 +5325,7 @@ func (p *Parser) applyReduceActionFromGSSTransientParents(source []byte, s *glrS
 		parent.endPoint = span.endPoint
 	}
 	if reduceChildPathMayDropSpan(childPath) {
-		extendParentSpanToWindow(parent, windowEntries, 0, reducedEnd, p.language.SymbolMetadata, p.spanExtendingInvisibleSymbols, p.nonSpanExtendingInvisibleSymbols, source)
+		extendParentSpanToWindow(parent, windowEntries, 0, reducedEnd, p.language.SymbolMetadata, p.spanExtendingInvisibleSymbols, p.nonSpanExtendingInvisibleSymbols, p.language.ZeroWidthChildPaddingSpanCertified, source)
 	}
 	if timing != nil {
 		timing.reduceSpanNanos += time.Since(spanStart).Nanoseconds()
@@ -6439,7 +6439,7 @@ func shouldUseRawSpanForReduction(sym Symbol, children []*Node, symbolMeta []Sym
 //
 // Trailing extras (separated into [reducedEnd, actualEnd)) are NOT scanned because
 // they become siblings of the parent, not children.
-func extendParentSpanToWindow(parent *Node, entries []stackEntry, start, reducedEnd int, symbolMeta []SymbolMetadata, spanExtendingInvisibleSymbols, nonSpanExtendingInvisibleSymbols []bool, source []byte) {
+func extendParentSpanToWindow(parent *Node, entries []stackEntry, start, reducedEnd int, symbolMeta []SymbolMetadata, spanExtendingInvisibleSymbols, nonSpanExtendingInvisibleSymbols []bool, zeroWidthChildPaddingSpan bool, source []byte) {
 	// Leading invisible structural children: extend startByte back to the
 	// earliest one. C's ts_subtree_set_children seeds the parent extent from its
 	// FIRST child unconditionally, including hidden openers that buildReduceChildren
@@ -6486,6 +6486,11 @@ func extendParentSpanToWindow(parent *Node, entries []stackEntry, start, reduced
 	// contiguity checks below prevent phantom gaps from inflating the span.
 	// Empty layout tokens can carry preceding scanner padding. They do not
 	// consume a line ending, so include that padding in the parent's extent.
+	// With zeroWidthChildPaddingSpan every zero-width hidden child past the
+	// parent's end does: C sizes a parent as the sum of its children's
+	// padding and size, so whatever the scanner skipped before the empty
+	// token, comments included, is inside the parent. A language certifies
+	// it only where the empty token's start is C's (after the skipped text).
 	for i := reducedEnd - 1; i >= start; i-- {
 		n := stackEntryNode(entries[i])
 		if n == nil || n.isExtra() {
@@ -6514,7 +6519,7 @@ func extendParentSpanToWindow(parent *Node, entries []stackEntry, start, reduced
 			parent.endPoint = n.endPoint
 		}
 		if n.startByte == n.endByte && n.startByte > parent.endByte &&
-			spanExtending {
+			(spanExtending || zeroWidthChildPaddingSpan) {
 			parent.endByte = n.endByte
 			parent.endPoint = n.endPoint
 		}
@@ -6542,7 +6547,7 @@ func extendParentSpanToWindow(parent *Node, entries []stackEntry, start, reduced
 			parent.endPoint = n.endPoint
 		}
 		if n.startByte == n.endByte && n.startByte > parent.endByte &&
-			spanExtending {
+			(spanExtending || zeroWidthChildPaddingSpan) {
 			parent.endByte = n.endByte
 			parent.endPoint = n.endPoint
 		}
@@ -8170,7 +8175,7 @@ func (p *Parser) applyReduceAction(source []byte, s *glrStack, act ParseAction, 
 	}
 	// Extend parent span to cover invisible children dropped by buildReduceChildren.
 	if reduceChildPathMayDropSpan(childPath) {
-		extendParentSpanToWindow(parent, entries, window.start, window.reducedEnd, p.language.SymbolMetadata, p.spanExtendingInvisibleSymbols, p.nonSpanExtendingInvisibleSymbols, source)
+		extendParentSpanToWindow(parent, entries, window.start, window.reducedEnd, p.language.SymbolMetadata, p.spanExtendingInvisibleSymbols, p.nonSpanExtendingInvisibleSymbols, p.language.ZeroWidthChildPaddingSpanCertified, source)
 	}
 	if timing != nil {
 		timing.reduceSpanNanos += time.Since(spanStart).Nanoseconds()
@@ -8350,7 +8355,7 @@ func (p *Parser) applyReduceActionTransientParents(source []byte, s *glrStack, a
 		parent.endPoint = span.endPoint
 	}
 	if reduceChildPathMayDropSpan(childPath) {
-		extendParentSpanToWindow(parent, entries, window.start, window.reducedEnd, p.language.SymbolMetadata, p.spanExtendingInvisibleSymbols, p.nonSpanExtendingInvisibleSymbols, source)
+		extendParentSpanToWindow(parent, entries, window.start, window.reducedEnd, p.language.SymbolMetadata, p.spanExtendingInvisibleSymbols, p.nonSpanExtendingInvisibleSymbols, p.language.ZeroWidthChildPaddingSpanCertified, source)
 	}
 	if timing != nil {
 		timing.reduceSpanNanos += time.Since(spanStart).Nanoseconds()
