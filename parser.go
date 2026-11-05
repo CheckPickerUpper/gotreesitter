@@ -5790,6 +5790,10 @@ func (p *Parser) parseInternal(source []byte, ts TokenSource, reuse *reuseCursor
 	parseRuntime.MemoryBudgetBytes = arena.budgetBytes
 
 	needToken := true
+	// advance tracks C's last_position for the packed version order: the
+	// furthest position a round has reached, and whether the versions of the
+	// latest round still wait to pass it before they may merge.
+	advance := packedVersionAdvance{}
 	var nextBranchOrder uint64 = 1
 	allocBranchOrder := func() uint64 {
 		order := nextBranchOrder
@@ -5841,6 +5845,9 @@ func (p *Parser) parseInternal(source []byte, ts TokenSource, reuse *reuseCursor
 			p.tryDemoteSingleLinearGSS(stacks, scratch)
 			scratch.gss.setSingleStackMode(true)
 			clearParseStackEntryCaches(stacks)
+		} else if advance.awaiting {
+			// C has not finished this advance: no version has passed the
+			// furthest position yet, so the versions stay apart.
 		} else {
 			if progress.enabled {
 				progress.emit(time.Now(), "merge_cull_begin", iterationsUsed, perfTokensConsumed, tok, perfTokensConsumed > 0, stacks, maxStacksSeen, nodeCount, peakStackDepth, needToken, singleStackIterations, multiStackIterations, "")
@@ -7517,7 +7524,8 @@ func (p *Parser) parseInternal(source []byte, ts TokenSource, reuse *reuseCursor
 		condenseShiftedRecovery := condenseRelevant && anyReduced && !tok.NoLookahead && allLiveUnacceptedStacksShifted(stacks)
 		condenseRan := false
 		condenseResumed := false
-		if condenseErrorCostEnabled && (((packedVersionOrder || cleanConvergence) && len(stacks) > 1) || !anyReduced || condenseEOFRecovery || condenseShiftedRecovery) {
+		advance.finishRound(p.compactPackedGSSVersionOrderEnabled(), tok, stacks)
+		if !advance.awaiting && condenseErrorCostEnabled && (((packedVersionOrder || cleanConvergence) && len(stacks) > 1) || !anyReduced || condenseEOFRecovery || condenseShiftedRecovery) {
 			var resumed bool
 			condenseRan = true
 			var reason ParseStopReason
@@ -7697,7 +7705,7 @@ func (p *Parser) parseInternal(source []byte, ts TokenSource, reuse *reuseCursor
 		// in-error vs clean → TakeRight; e.g. the FIDL versioned-layout
 		// recovery chain). No stack is paused at this point (paused stacks
 		// have shifted=false), so the resume tail inside is a no-op.
-		if condenseErrorCostEnabled && !condenseRan && condenseRelevant &&
+		if !advance.awaiting && condenseErrorCostEnabled && !condenseRan && condenseRelevant &&
 			anyReduced && !tok.NoLookahead &&
 			allLiveUnacceptedStacksShifted(stacks) {
 			var resumed bool

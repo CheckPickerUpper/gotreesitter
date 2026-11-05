@@ -440,11 +440,16 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 		// TestKotlinCompleteStatementsMatchLockedC, and a 994-file census of
 		// JetBrains/Exposed plus a Kotlin compiler-plugin reader, where Go
 		// error trees that C reads cleanly fall from 292 to 30 and exact
-		// clean trees rise from 622 to 942. Two Exposed files leave the
-		// exact set: an annotation on its own line before a generic call
-		// with a trailing lambda (@A then a<E> {}) reads as a
-		// prefix_expression where C reads a statement annotation.
+		// clean trees rise from 622 to 945.
 		compactPackedGSSVersionOrder: true,
+		// ts_stack_can_merge has no dynamic-precedence term: C merges a
+		// reduction into an earlier version at the same state even when
+		// the two readings' dynamic precedence differs, and the merge
+		// decides which reading the parse continues with. Without it an
+		// annotation on its own line before a generic call with a trailing
+		// lambda (@A then a<E> {}) reads as a prefix_expression where C
+		// reads a statement annotation.
+		legacyMergeAdmission: gotreesitter.LegacyMergeAdmitDynamicPrecedence,
 	},
 	// Apex's tied class-literal election matches the C oracle once the
 	// compact route selects the sole primary derivation; the compact tree is
