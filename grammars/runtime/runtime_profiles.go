@@ -428,6 +428,23 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 		externalScannerFullParseRetry:  gotreesitter.ExternalScannerFullParseRetrySkipRepeat,
 		nativeResultCompatibility:      gotreesitter.ResultCompatibilityNativeCollapsedChildren,
 		compactPrimaryAcceptDerivation: true,
+		// C keeps every reading of an ambiguous Kotlin statement as a stack
+		// version, merges a reduction into any version at the same state and
+		// position, and elects among the merged children with
+		// ts_subtree_compare. Without C's version order the parser keeps one
+		// reading early and leaves an ERROR node in valid Kotlin: a generic
+		// call statement (listOf<P>()), two index assignments in a row, an
+		// annotation then a modifier then a typed parameter, a member index
+		// inside a lambda (f { it.v[1] }), and the suspend receiver type in
+		// testdata/real/kotlin. Locked-C receipts:
+		// TestKotlinCompleteStatementsMatchLockedC, and a 994-file census of
+		// JetBrains/Exposed plus a Kotlin compiler-plugin reader, where Go
+		// error trees that C reads cleanly fall from 292 to 30 and exact
+		// clean trees rise from 622 to 942. Two Exposed files leave the
+		// exact set: an annotation on its own line before a generic call
+		// with a trailing lambda (@A then a<E> {}) reads as a
+		// prefix_expression where C reads a statement annotation.
+		compactPackedGSSVersionOrder: true,
 	},
 	// Apex's tied class-literal election matches the C oracle once the
 	// compact route selects the sole primary derivation; the compact tree is
