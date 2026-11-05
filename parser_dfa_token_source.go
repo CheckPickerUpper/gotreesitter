@@ -62,7 +62,11 @@ type dfaTokenSource struct {
 	// externalScannerCheckpointRecord.restore's own defensive copy), and
 	// those buffers are state other bookkeeping for the same shared token
 	// still depends on after the probe returns.
-	externalProbeScratch        []byte
+	externalProbeScratch []byte
+	// externalProbeAfterScratch holds the scanner state a probe's scan left
+	// behind, so probeExternalTokenForLexState can report whether the scan
+	// ended in the state the shared token left.
+	externalProbeAfterScratch   []byte
 	externalLexer               ExternalLexer
 	externalRetryLexer          ExternalLexer
 	externalLookaheadEndByte    uint32
@@ -4862,11 +4866,21 @@ func (d *dfaTokenSource) restoreExternalScannerState(snapshot []byte) {
 // tell "unchanged" from "unknown" instead of refusing every merge this
 // stack takes part in afterward.
 func (d *dfaTokenSource) probeZeroWidthExternalTokenForLexState(source []byte, lexState uint16, tok Token) (Token, externalScannerCheckpoint, bool) {
+	probed, checkpoint, _, ok := d.probeExternalTokenForLexState(source, lexState, tok)
+	return probed, checkpoint, ok
+}
+
+// probeExternalTokenForLexState is probeZeroWidthExternalTokenForLexState
+// that also reports whether the scan ended in the scanner state the shared
+// token left behind (stateKept). A same-span token whose scan ends there can
+// be shifted by one stack without changing the scanner state every
+// sibling's next token depends on; the probe restores the payload either way.
+func (d *dfaTokenSource) probeExternalTokenForLexState(source []byte, lexState uint16, tok Token) (probed Token, checkpoint externalScannerCheckpoint, stateKept bool, ok bool) {
 	if d == nil || d.language == nil || d.language.ExternalScanner == nil {
-		return Token{}, externalScannerCheckpoint{}, false
+		return Token{}, externalScannerCheckpoint{}, false, false
 	}
 	if int(lexState) >= len(d.language.ExternalLexStates) {
-		return Token{}, externalScannerCheckpoint{}, false
+		return Token{}, externalScannerCheckpoint{}, false, false
 	}
 	row := d.language.ExternalLexStates[lexState]
 	scanStart, scanPoint := tok.StartByte, tok.StartPoint
@@ -4881,7 +4895,7 @@ func (d *dfaTokenSource) probeZeroWidthExternalTokenForLexState(source []byte, l
 		scanStart = tok.ExternalScannerStartByte
 		row, column, _, ok := recover.PaddingStartPoint(source, scanStart, tok.StartByte, tok.StartPoint.Row, tok.StartPoint.Column)
 		if !ok {
-			return Token{}, externalScannerCheckpoint{}, false
+			return Token{}, externalScannerCheckpoint{}, false, false
 		}
 		scanPoint = Point{Row: row, Column: column}
 	}
@@ -4977,12 +4991,17 @@ func (d *dfaTokenSource) probeZeroWidthExternalTokenForLexState(source []byte, l
 	probeAccepted = RunExternalScanner(d.language, d.externalPayload, el, row)
 	probeCompleted = true
 	if !probeAccepted {
-		return Token{}, externalScannerCheckpoint{}, false
+		return Token{}, externalScannerCheckpoint{}, false, false
 	}
-	probed, ok := el.token()
+	probed, ok = el.token()
 	if !ok || probed.Symbol == 0 {
-		return Token{}, externalScannerCheckpoint{}, false
+		return Token{}, externalScannerCheckpoint{}, false, false
 	}
+	after := d.captureExternalScannerStateInto(&d.externalProbeAfterScratch)
+	// Siblings that took the shared token continue from the state the shared
+	// lexing left (dispatchPayload); a stack taking this token stays in step
+	// with them only when its scan ends in that same state.
+	stateKept = bytes.Equal(after, dispatchPayload)
 	probed.ExternalScannerToken = true
 	probed.ExternalScannerStartByte = scanStart
 
@@ -4996,12 +5015,11 @@ func (d *dfaTokenSource) probeZeroWidthExternalTokenForLexState(source []byte, l
 	// (cStackEntryExternalScannerStatesEqual, glr.go), and the canonical
 	// leaf table (parser_reduce.go), all of which would then believe the
 	// scanner advanced when it never did.
-	var cp externalScannerCheckpoint
 	if d.usesExternalCheckpoints && len(before) != 0 {
 		start := append([]byte(nil), before...)
-		cp = externalScannerCheckpoint{start: start, end: append([]byte(nil), start...)}
+		checkpoint = externalScannerCheckpoint{start: start, end: append([]byte(nil), start...)}
 	}
-	return probed, cp, true
+	return probed, checkpoint, stateKept, true
 }
 
 // singleShiftActionForSymbol is Parser.singleShiftActionForSymbol

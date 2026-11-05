@@ -6209,6 +6209,9 @@ func (p *Parser) relexTokenForStackLexState(
 	if languageKeywordReservedInState(lang, state, tok.Symbol) {
 		return tok, state, false
 	}
+	if relexed, ok := p.relexSameSpanExternalTokenForStackLexState(source, dts, state, tok); ok {
+		return relexed, state, true
+	}
 	ls := lang.LexModes[state].LexStateIndex()
 	if ls != noLookaheadLexState && int(ls) < len(lang.LexStates) {
 		// GLR prunes branches at no-action points constantly during ordinary
@@ -6262,6 +6265,41 @@ func (p *Parser) relexTokenForStackLexState(
 		}
 	}
 	return p.relexZeroWidthExternalTokenForStackLexState(source, dts, s, state, tok, nodeCount, arena, scratch, trackChildErrors, rescueBudget)
+}
+
+// relexSameSpanExternalTokenForStackLexState runs the external scanner with
+// the stack's own external lex state, as C's ts_parser__lex does before its
+// internal lexer, and returns the token when it is a different symbol over
+// exactly the shared token's bytes that the state has an action for.
+//
+// C lexes once per version, so a version whose external lex state reads the
+// bytes as an external token gets that token even when a sibling version
+// reads the same bytes with the internal lexer. The shared token here came
+// from the union of every live stack's states, so a stack whose state needs
+// the external reading is starved without this probe. Two guards keep the
+// stack in lockstep with its siblings: the token covers exactly the shared
+// token's span, so the stack advances to the same byte offset, and the scan
+// ends in the scanner state the shared token left behind (stateKept), so the
+// next token every live stack reads is scanned from the same state.
+func (p *Parser) relexSameSpanExternalTokenForStackLexState(source []byte, dts *dfaTokenSource, state StateID, tok Token) (Token, bool) {
+	lang := p.language
+	if dts == nil || dts.language != lang || lang.ExternalScanner == nil || len(lang.ExternalLexStates) == 0 {
+		return tok, false
+	}
+	if int(state) >= len(lang.LexModes) {
+		return tok, false
+	}
+	externalLexState := lang.LexModes[state].ExternalLexState
+	if externalLexState == 0 || int(externalLexState) >= len(lang.ExternalLexStates) {
+		return tok, false
+	}
+	probed, _, stateKept, ok := dts.probeExternalTokenForLexState(source, externalLexState, tok)
+	if !ok || !stateKept || probed.Symbol == tok.Symbol ||
+		probed.StartByte != tok.StartByte || probed.EndByte != tok.EndByte ||
+		!p.stateHasActionForSymbol(state, probed.Symbol) {
+		return tok, false
+	}
+	return probed, true
 }
 
 // relexZeroWidthExternalTokenForStackLexState is the zero-width-external
