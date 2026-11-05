@@ -1162,6 +1162,7 @@ func restoreDFALeafScan(dts *dfaTokenSource, snapshot dfaLeafScanSnapshot) {
 type dfaTokenSourceStateSnapshot struct {
 	state                       StateID
 	glrStates                   []StateID
+	glrStatesInVersionOrder     bool
 	lexer                       Lexer
 	hasLexer                    bool
 	externalValid               []bool
@@ -1220,6 +1221,7 @@ func snapshotDFATokenSourceState(dts *dfaTokenSource) (dfaTokenSourceStateSnapsh
 	state := dfaTokenSourceStateSnapshot{
 		state:                       dts.state,
 		glrStates:                   append([]StateID(nil), dts.glrStates...),
+		glrStatesInVersionOrder:     dts.glrStatesInVersionOrder,
 		externalValid:               append([]bool(nil), dts.externalValid...),
 		extZeroTried:                append([]bool(nil), dts.extZeroTried...),
 		externalTokenStart:          append([]byte(nil), dts.externalTokenStart...),
@@ -1259,6 +1261,7 @@ func restoreDFATokenSourceState(dts *dfaTokenSource, state dfaTokenSourceStateSn
 	}
 	dts.state = state.state
 	dts.glrStates = append(dts.glrStates[:0], state.glrStates...)
+	dts.glrStatesInVersionOrder = state.glrStatesInVersionOrder
 	if dts.lexer == nil {
 		dts.lexer = &Lexer{}
 	}

@@ -8834,6 +8834,7 @@ func (p *Parser) updateParserStateTokenSource(ts TokenSource, stacks []glrStack,
 	}
 	scratch.glrStates = glrBuf
 	stateful.SetGLRStates(glrBuf)
+	p.markGLRStatesInVersionOrder(ts)
 }
 
 func (p *Parser) updateCurrentRelexParserStateTokenSource(ts TokenSource, stacks []glrStack, scratch *parserScratch) bool {
@@ -8896,7 +8897,19 @@ func (p *Parser) updateCurrentRelexParserStateTokenSource(ts TokenSource, stacks
 		return true
 	}
 	stateful.SetGLRStates(glrBuf)
+	p.markGLRStatesInVersionOrder(ts)
 	return true
+}
+
+// markGLRStatesInVersionOrder tells the DFA token source under ts whether
+// the GLR states it was just given list the live stacks in C's version
+// order, which holds while the packed stack-version order is enabled.
+// SetGLRStates clears the mark, so states set by any other route are never
+// read as C's version order.
+func (p *Parser) markGLRStatesInVersionOrder(ts TokenSource) {
+	if dts := underlyingDFATokenSource(ts); dts != nil {
+		dts.glrStatesInVersionOrder = p.compactPackedGSSVersionOrderEnabled()
+	}
 }
 
 func (p *Parser) tryRelexSingleParserState(tok Token, state StateID, ts TokenSource, stacks []glrStack, scratch *parserScratch) (Token, bool) {

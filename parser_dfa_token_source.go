@@ -98,9 +98,14 @@ type dfaTokenSource struct {
 	// build never bills probe lexing to the parse's lexed count. The prover
 	// sets it for the duration of its per-state loop and restores it to false
 	// on every exit path.
-	quiescenceProbing       bool
-	singleState             [1]StateID
-	glrStates               []StateID // all active GLR stack states
+	quiescenceProbing bool
+	singleState       [1]StateID
+	glrStates         []StateID // all active GLR stack states
+	// glrStatesInVersionOrder is true while glrStates lists the live stacks
+	// in tree-sitter C's version order (the packed stack-version order), so
+	// glrStates[0] is the state of C's first version, the one that lexes
+	// first at this position.
+	glrStatesInVersionOrder bool
 	hasExternalScanner      bool
 	hasExternalSymbols      bool
 	usesExternalCheckpoints bool
@@ -486,6 +491,7 @@ func (d *dfaTokenSource) Reset(source []byte) {
 	}
 	d.state = 0
 	d.glrStates = nil
+	d.glrStatesInVersionOrder = false
 	if len(d.externalValid) > 0 {
 		d.externalValid = d.externalValid[:0]
 	}
@@ -556,6 +562,7 @@ func (d *dfaTokenSource) Close() {
 	d.externalValidByState = nil
 	d.externalValidMaskByState = nil
 	d.glrStates = nil
+	d.glrStatesInVersionOrder = false
 	d.extZeroPos = -1
 	d.extZeroState = 0
 	d.zeroWidthPos = -1
@@ -937,8 +944,12 @@ func (d *dfaTokenSource) lexesErrorModeAtErrorState() bool {
 	return d != nil && d.cRecoveryEnabled
 }
 
+// SetGLRStates replaces the live stacks' states. The new list is not known
+// to be in C's version order until the parser says so after this call
+// (Parser.markGLRStatesInVersionOrder).
 func (d *dfaTokenSource) SetGLRStates(states []StateID) {
 	d.glrStates = states
+	d.glrStatesInVersionOrder = false
 }
 
 func (d *dfaTokenSource) setExternalScannerCheckpointsEnabled(enabled bool) {
@@ -4480,6 +4491,17 @@ func (d *dfaTokenSource) nextGLRScoredExternalToken(states []StateID) (Token, bo
 	bestOriginActions := -1
 	bestSpecificity := -1
 	bestPrimaryHasAction := false
+	// ts_parser__lex runs per version, version 0 first, in the version's own
+	// external lex state. When that gives version 0 a zero-width token it can
+	// act on, version 0 shifts it and lexes again at the same position before
+	// any later version lexes; ts_parser__can_reuse_first_leaf never hands a
+	// zero-width token to a version in another lex mode. So that token, not
+	// the reading most stacks support, is the next shared lookahead.
+	versionZeroExternalLexState := -1
+	if d.glrStatesInVersionOrder && int(states[0]) < len(d.language.LexModes) {
+		versionZeroExternalLexState = int(d.language.LexModes[states[0]].ExternalLexState)
+	}
+	versionZeroTakesZeroWidthToken := false
 
 	for _, elsID := range elsOrder {
 		row := d.language.ExternalLexStates[elsID]
@@ -4496,6 +4518,10 @@ func (d *dfaTokenSource) nextGLRScoredExternalToken(states []StateID) (Token, bo
 		}
 		tok.ExternalScannerToken = true
 		tok.ExternalScannerStartByte = uint32(startPos)
+
+		if elsID == versionZeroExternalLexState && tok.StartByte == tok.EndByte && d.lookupActionIndex(states[0], tok.Symbol) != 0 {
+			versionZeroTakesZeroWidthToken = true
+		}
 
 		support := 0
 		originActions := 0
@@ -4550,6 +4576,9 @@ func (d *dfaTokenSource) nextGLRScoredExternalToken(states []StateID) (Token, bo
 	}
 
 	d.restoreExternalScannerState(snapshot)
+	if versionZeroTakesZeroWidthToken {
+		bestFound, bestELS = true, versionZeroExternalLexState
+	}
 	if !bestFound {
 		return Token{}, false
 	}
