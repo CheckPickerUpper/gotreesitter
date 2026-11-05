@@ -4883,6 +4883,17 @@ func compactPackedGSSActionCellRequiresTransaction(actions []ParseAction) bool {
 			(actions[0].Type == ParseActionShift && actions[0].Repetition))
 }
 
+// actionCellHasReduce reports whether an action cell holds a reduce action,
+// which is when C's ts_parser__advance sets did_reduce for it.
+func actionCellHasReduce(actions []ParseAction) bool {
+	for _, action := range actions {
+		if action.Type == ParseActionReduce {
+			return true
+		}
+	}
+	return false
+}
+
 func compactPackedGSSDispatchVersionCount(certified bool, roundVersionCount, currentVersionCount int) int {
 	if certified {
 		return currentVersionCount
@@ -6610,9 +6621,16 @@ func (p *Parser) parseInternal(source []byte, ts TokenSource, reuse *reuseCursor
 					needToken = false
 					goto retryAction
 				}
-				if tok.NoLookahead {
-					// C halts a nonterminal-extra version whose fixed reduction
-					// produced no surviving physical version.
+				if tok.NoLookahead || actionCellHasReduce(actions) {
+					// C halts a version whose reductions all merged into
+					// existing versions (ts_parser__advance, "A reduction was
+					// performed, but was merged into an existing stack version.
+					// This version can be discarded."). That includes a
+					// nonterminal-extra version whose fixed reduction produced
+					// no surviving physical version. The merged reductions
+					// carry this version's readings forward; keeping it alive
+					// would let it skip a zero-width lookahead it never
+					// consumed and read the next token in a state C never has.
 					s.dead = true
 					continue
 				}
