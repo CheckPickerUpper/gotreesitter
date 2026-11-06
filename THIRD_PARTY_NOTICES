@@ -2570,9 +2570,9 @@ ocaml -- https://github.com/tree-sitter/tree-sitter-ocaml @ 3b2e14e0697d
   Copyright (c) 2020 Max Brunsfeld and Pieter Goetschalckx
   License file: https://github.com/tree-sitter/tree-sitter-ocaml/blob/3b2e14e0697d405c9aa0beddfa09b71f45abc504/LICENSE
 
-odin -- https://github.com/CheckPickerUpper/tree-sitter-odin @ 1b5f462c6888
+odin -- https://github.com/CheckPickerUpper/tree-sitter-odin @ 78b21d5f22f6
   Copyright (c) 2023 Amaan Qureshi <amaanq12@gmail.com>
-  License file: https://github.com/CheckPickerUpper/tree-sitter-odin/blob/1b5f462c688844592e4c428f7b113cbdb71ea092/LICENSE
+  License file: https://github.com/CheckPickerUpper/tree-sitter-odin/blob/78b21d5f22f62434af64e6e1c8c500544f41c01f/LICENSE
 
 org -- https://github.com/emiasims/tree-sitter-org @ 64cfbc213f5a
   Copyright (c) 2021-2022 Emilia Simmons

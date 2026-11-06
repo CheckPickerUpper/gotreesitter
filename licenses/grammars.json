@@ -1792,13 +1792,13 @@
     {
       "name": "odin",
       "repo": "https://github.com/CheckPickerUpper/tree-sitter-odin",
-      "ref": "1b5f462c688844592e4c428f7b113cbdb71ea092",
+      "ref": "78b21d5f22f62434af64e6e1c8c500544f41c01f",
       "spdx": "MIT",
       "license_name": "MIT License",
       "copyright_holders": [
         "Copyright (c) 2023 Amaan Qureshi <amaanq12@gmail.com>"
       ],
-      "license_file_url": "https://github.com/CheckPickerUpper/tree-sitter-odin/blob/1b5f462c688844592e4c428f7b113cbdb71ea092/LICENSE",
+      "license_file_url": "https://github.com/CheckPickerUpper/tree-sitter-odin/blob/78b21d5f22f62434af64e6e1c8c500544f41c01f/LICENSE",
       "method": "github_license_api",
       "copyleft": false
     },

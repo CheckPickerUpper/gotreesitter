@@ -544,10 +544,10 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 	// and its locked large test-vector witness certifies the ASCII full-arena
 	// density cap. Both policies remain bound to this exact blob identity.
 	//
-	// Moved to blob d30fb048 (tree-sitter-odin 1b5f462c). The retry-profile
+	// Moved to blob 05f46527 (tree-sitter-odin 78b21d5f). The retry-profile
 	// corpus certifier has not been re-run on this blob.
 	"odin": {
-		blobSHA256:               mustRuntimeProfileSHA256("d30fb048e9c5df3862d1db87759ff875bfa26a8db7ef5e61f88bbb6858394e7b"),
+		blobSHA256:               mustRuntimeProfileSHA256("05f465270e15052cadc84a4ec0b9bbf469ddf56f5c429877d3a79b196f8ca473"),
 		fullParseArenaDensityCap: true,
 		fullParseAcceptedErrorRetryProfile: gotreesitter.FullParseAcceptedErrorRetryProfile{
 			SkipCompleteAcceptedErrorRetry: true,
