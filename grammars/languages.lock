@@ -108,7 +108,7 @@ foam https://github.com/FoamScience/tree-sitter-foam 472c24f11a547820327fb1be565
 jsdoc https://github.com/tree-sitter/tree-sitter-jsdoc 658d18dcdddb75c760363faa4963427a7c6b52db src
 vue https://github.com/tree-sitter-grammars/tree-sitter-vue ce8011a414fdf8091f4e4071752efc376f4afb08 src .vue
 gleam https://github.com/gleam-lang/tree-sitter-gleam 6ea757f7eb8d391dbf24dbb9461990757946dd5e src .gleam
-odin https://github.com/tree-sitter-grammars/tree-sitter-odin d2ca8efb4487e156a60d5bd6db2598b872629403 src .odin
+odin https://github.com/CheckPickerUpper/tree-sitter-odin 1b5f462c688844592e4c428f7b113cbdb71ea092 src .odin
 fortran https://github.com/stadelmanma/tree-sitter-fortran 2880b7aab4fb7cc618de1ef3d4c6d93b2396c031 src .f,.f90,.f95,.f03,.f08
 pascal https://github.com/Isopod/tree-sitter-pascal 042119eca2e18a60e56317fb06ee3ba5c32cb447 src .pas,.pp,.inc
 scheme https://github.com/6cdh/tree-sitter-scheme b5c701148501fa056302827442b5b4956f1edc03 src .scm,.ss

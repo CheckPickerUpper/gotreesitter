@@ -113,7 +113,7 @@ scss https://github.com/tree-sitter-grammars/tree-sitter-scss src .scss
 r https://github.com/r-lib/tree-sitter-r src .r,.R
 gleam https://github.com/gleam-lang/tree-sitter-gleam src .gleam
 objc https://github.com/tree-sitter-grammars/tree-sitter-objc src .m
-odin https://github.com/tree-sitter-grammars/tree-sitter-odin src .odin
+odin https://github.com/CheckPickerUpper/tree-sitter-odin src .odin
 fortran https://github.com/stadelmanma/tree-sitter-fortran src .f,.f90,.f95,.f03,.f08
 pascal https://github.com/Isopod/tree-sitter-pascal src .pas,.pp,.inc
 clojure https://github.com/sogaiu/tree-sitter-clojure src .clj,.cljs,.cljc,.edn

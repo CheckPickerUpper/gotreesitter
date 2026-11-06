@@ -53,10 +53,10 @@ var odinDefaultSymTable = [odinTokenCount]gotreesitter.Symbol{
 // (odinTok* order).
 var odinExternalScannerSpec = ExternalScannerSpec{
 	Language:       "odin",
-	UpstreamRepo:   "https://github.com/tree-sitter-grammars/tree-sitter-odin",
-	UpstreamCommit: "d2ca8efb4487e156a60d5bd6db2598b872629403",
+	UpstreamRepo:   "https://github.com/CheckPickerUpper/tree-sitter-odin",
+	UpstreamCommit: "1b5f462c688844592e4c428f7b113cbdb71ea092",
 	SourceFiles: []ExternalScannerSourceFile{
-		{Path: "src/grammar.json", SHA256: "17ee7bc8972a93e2cab56154f0ba077a9fdb6805da3e7af23f16e62c8195dc01"},
+		{Path: "src/grammar.json", SHA256: "9ccb5b9ef18c90a0e84c98a9ded0b4a1ea3643df647410463ee5420b021967e2"},
 		{Path: "src/scanner.c", SHA256: "e342d07d3e35c3865a6bda0587f3a3b46a7b2411fd93cbee01dc40ab7631c93b"},
 	},
 	Externals: []string{

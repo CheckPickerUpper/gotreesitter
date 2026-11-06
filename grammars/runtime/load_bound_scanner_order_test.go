@@ -2514,7 +2514,7 @@ var scannerSpecCases = []scannerSpecCase{
 	},
 	{
 		lang:   "odin",
-		commit: "d2ca8efb4487e156a60d5bd6db2598b872629403",
+		commit: "1b5f462c688844592e4c428f7b113cbdb71ea092",
 		externals: []string{
 			"_newline",
 			"_backslash",

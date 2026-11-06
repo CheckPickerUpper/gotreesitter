@@ -1791,14 +1791,14 @@
     },
     {
       "name": "odin",
-      "repo": "https://github.com/tree-sitter-grammars/tree-sitter-odin",
-      "ref": "d2ca8efb4487e156a60d5bd6db2598b872629403",
+      "repo": "https://github.com/CheckPickerUpper/tree-sitter-odin",
+      "ref": "1b5f462c688844592e4c428f7b113cbdb71ea092",
       "spdx": "MIT",
       "license_name": "MIT License",
       "copyright_holders": [
         "Copyright (c) 2023 Amaan Qureshi <amaanq12@gmail.com>"
       ],
-      "license_file_url": "https://github.com/tree-sitter-grammars/tree-sitter-odin/blob/d2ca8efb4487e156a60d5bd6db2598b872629403/LICENSE",
+      "license_file_url": "https://github.com/CheckPickerUpper/tree-sitter-odin/blob/1b5f462c688844592e4c428f7b113cbdb71ea092/LICENSE",
       "method": "github_license_api",
       "copyleft": false
     },

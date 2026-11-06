@@ -543,8 +543,11 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 	// Odin's accepted-error retry ladder selects the same tree on every pass,
 	// and its locked large test-vector witness certifies the ASCII full-arena
 	// density cap. Both policies remain bound to this exact blob identity.
+	//
+	// Moved to blob d30fb048 (tree-sitter-odin 1b5f462c). The retry-profile
+	// corpus certifier has not been re-run on this blob.
 	"odin": {
-		blobSHA256:               mustRuntimeProfileSHA256("9b376bcbbe677780b9031ae84eee4fb59eb37a14fbe169c7c17d35f2b5b776ed"),
+		blobSHA256:               mustRuntimeProfileSHA256("d30fb048e9c5df3862d1db87759ff875bfa26a8db7ef5e61f88bbb6858394e7b"),
 		fullParseArenaDensityCap: true,
 		fullParseAcceptedErrorRetryProfile: gotreesitter.FullParseAcceptedErrorRetryProfile{
 			SkipCompleteAcceptedErrorRetry: true,
