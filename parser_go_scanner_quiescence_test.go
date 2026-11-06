@@ -16,10 +16,14 @@ package gotreesitter_test
 //     comments before a declaration.
 //
 //   - The scanner gate is never the binding constraint for Go. Across the whole
-//     sweep, ReuseUnsupported stays false and ReuseRejectScannerUnquiescent
-//     stays 0, while some site actually reuses subtrees. Go reuse is admitted
-//     by the scanner gate; the constraint lives elsewhere (fragility and
-//     root-non-leaf), which is the honest W4 finding.
+//     sweep, ReuseRejectScannerUnquiescent stays 0 while some site actually
+//     reuses subtrees, and ReuseUnsupported stays false at every freshly-clean
+//     site. At a site whose edited text has a syntax error, the only accepted
+//     unsupported reason is the fresh-verified fallback
+//     (recovery_frontier_unproven): the incremental recovery differed from
+//     fresh, which is a recovery-frontier fact, not a scanner one. Go reuse is
+//     admitted by the scanner gate; the constraint lives elsewhere (fragility,
+//     root-non-leaf and recovery), which is the honest W4 finding.
 
 import (
 	"bytes"
@@ -129,7 +133,7 @@ func TestGoScannerQuiescenceOracleSweep(t *testing.T) {
 	lang := grammars.GoLanguage()
 	editClasses := []string{"insert", "delete", "replace"}
 
-	var totalSites, cleanSites, reusedSites int
+	var totalSites, cleanSites, reusedSites, verifiedFreshFallbackSites int
 	var maxReused uint64
 
 	for name, src := range w4GoAdversarialFixtures() {
@@ -190,10 +194,14 @@ func TestGoScannerQuiescenceOracleSweep(t *testing.T) {
 				}
 
 				// The scanner gate must never block or reject Go reuse, at any
-				// site, clean or not.
+				// site, clean or not. Only an edited text with a syntax error may
+				// fall back to its verified fresh tree.
+				if prof.ReuseUnsupported && (freshClean || prof.ReuseUnsupportedReason != "recovery_frontier_unproven") {
+					t.Fatalf("%s/%s@%d: Go reuse unexpectedly unsupported (freshClean=%v): %q",
+						name, class, off, freshClean, prof.ReuseUnsupportedReason)
+				}
 				if prof.ReuseUnsupported {
-					t.Fatalf("%s/%s@%d: Go reuse unexpectedly unsupported: %q",
-						name, class, off, prof.ReuseUnsupportedReason)
+					verifiedFreshFallbackSites++
 				}
 				if prof.ReuseRejectScannerUnquiescent != 0 {
 					t.Fatalf("%s/%s@%d: ReuseRejectScannerUnquiescent=%d, want 0 (Go is quiescent everywhere)",
@@ -220,7 +228,8 @@ func TestGoScannerQuiescenceOracleSweep(t *testing.T) {
 		t.Fatalf("sweep reused no subtrees (reusedSites=%d maxReused=%d): the quiescence assertion is vacuous",
 			reusedSites, maxReused)
 	}
-	t.Logf("sweep: sites=%d freshClean=%d reusedSites=%d maxReusedSubtrees=%d", totalSites, cleanSites, reusedSites, maxReused)
+	t.Logf("sweep: sites=%d freshClean=%d reusedSites=%d maxReusedSubtrees=%d verifiedFreshFallbackSites=%d",
+		totalSites, cleanSites, reusedSites, maxReused, verifiedFreshFallbackSites)
 }
 
 // TestGoNearTopInsertScannerGateNotBinding proves, on a representative
