@@ -3507,9 +3507,17 @@ func (p *Parser) cAppendReductionActionVersions(source []byte, versions []glrSta
 
 // cAppendActionCellReductionVersions applies the reductions in one parse-table
 // cell to an unchanged physical source slot. A repetition shift is a no-op.
-// The first ordinary shift, accept, or recover action owns the source slot and
-// stops the scan. Without a terminal action, the caller promotes the first
-// surviving result from the last successful reduction.
+// The first ordinary shift, accept, or recover action owns the source slot.
+// Without a terminal action, the caller promotes the first surviving result
+// from the last successful reduction.
+//
+// ts_parser__advance returns at the cell's first shift, and tree-sitter's
+// generator always lists that shift after every reduction of the cell, so C
+// runs every reduction before the shift. A grammargen table can list a shift
+// before a reduction in the same cell. Every reduction therefore runs first,
+// in table order, and only then does the terminal action take the slot;
+// stopping at the shift would drop the reductions listed after it, and with
+// them every reading that only those reductions start.
 func (p *Parser) cAppendActionCellReductionVersions(source []byte, versions []glrStack, originalVersion int, actions []ParseAction, tok Token, nodeCount *int, arena *nodeArena, entryScratch *glrEntryScratch, gssScratch *gssScratch, tmpEntries *[]stackEntry, trackChildErrors *bool, anyReduced *bool) ([]glrStack, int, int, ParseStopReason) {
 	if originalVersion < 0 || originalVersion >= len(versions) {
 		return versions, -1, -1, ParseStopInvariantViolation
@@ -3526,30 +3534,42 @@ func (p *Parser) cAppendActionCellReductionVersions(source []byte, versions []gl
 	lastReductionVersion := -1
 	var singletonCandidate glrStack
 	for actionOrdinal, action := range actions {
-		switch action.Type {
-		case ParseActionReduce:
-			var reductionVersion int
-			var reason ParseStopReason
-			versions, reductionVersion, reason = p.cAppendReductionActionVersions(
-				source, versions, originalVersion, action, tok, nodeCount, arena,
-				entryScratch, gssScratch, tmpEntries, trackChildErrors, &singletonCandidate, anyReduced, actionOrdinal,
-			)
-			if reason != ParseStopNone {
-				return versions, lastReductionVersion, -1, reason
-			}
-			if reductionVersion >= 0 {
-				lastReductionVersion = reductionVersion
-			}
-		case ParseActionShift:
-			if action.Repetition {
-				continue
-			}
-			return versions, lastReductionVersion, actionOrdinal, ParseStopNone
-		case ParseActionAccept, ParseActionRecover:
-			return versions, lastReductionVersion, actionOrdinal, ParseStopNone
+		if action.Type != ParseActionReduce {
+			continue
+		}
+		var reductionVersion int
+		var reason ParseStopReason
+		versions, reductionVersion, reason = p.cAppendReductionActionVersions(
+			source, versions, originalVersion, action, tok, nodeCount, arena,
+			entryScratch, gssScratch, tmpEntries, trackChildErrors, &singletonCandidate, anyReduced, actionOrdinal,
+		)
+		if reason != ParseStopNone {
+			return versions, lastReductionVersion, -1, reason
+		}
+		if reductionVersion >= 0 {
+			lastReductionVersion = reductionVersion
 		}
 	}
-	return versions, lastReductionVersion, -1, ParseStopNone
+	return versions, lastReductionVersion, actionCellTerminalOrdinal(actions), ParseStopNone
+}
+
+// actionCellTerminalOrdinal returns the index of the first action in a
+// parse-table cell that owns the source version after the cell's reductions:
+// an ordinary shift, an accept, or a recover. A repetition shift never owns
+// it. A cell with no such action returns -1.
+func actionCellTerminalOrdinal(actions []ParseAction) int {
+	for actionOrdinal, action := range actions {
+		switch action.Type {
+		case ParseActionShift:
+			if !action.Repetition {
+				return actionOrdinal
+			}
+		case ParseActionAccept, ParseActionRecover:
+			return actionOrdinal
+		case ParseActionReduce:
+		}
+	}
+	return -1
 }
 
 func (p *Parser) cReductionCandidatesForActionInto(source []byte, start glrStack, act ParseAction, tok Token, nodeCount *int, arena *nodeArena, entryScratch *glrEntryScratch, gssScratch *gssScratch, tmpEntries *[]stackEntry, trackChildErrors *bool, singletonCandidate *glrStack, anyReduced *bool, actionOrdinal int) ([]glrStack, bool, ParseStopReason) {
