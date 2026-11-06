@@ -2116,7 +2116,7 @@ func TestCAppendActionCellReductionVersionsPromotesLastSuccessfulReduction(t *te
 	}
 }
 
-func TestCAppendActionCellReductionVersionsStopsAtFirstTerminal(t *testing.T) {
+func TestCAppendActionCellReductionVersionsRunsReductionsListedAfterTheTerminal(t *testing.T) {
 	parser := cActionCellTransactionParser()
 	arena := acquireNodeArena(arenaClassFull)
 	defer arena.Release()
@@ -2126,7 +2126,7 @@ func TestCAppendActionCellReductionVersionsStopsAtFirstTerminal(t *testing.T) {
 		{Type: ParseActionShift, Repetition: true},
 		{Type: ParseActionReduce, Symbol: 5, ChildCount: 1},
 		{Type: ParseActionShift, State: 8},
-		{Type: ParseActionReduce, Symbol: 4, ChildCount: 1},
+		{Type: ParseActionReduce, Symbol: 6, ChildCount: 1},
 	}
 	nodeCount := 0
 	anyReduced := false
@@ -2137,16 +2137,16 @@ func TestCAppendActionCellReductionVersionsStopsAtFirstTerminal(t *testing.T) {
 	if reason != ParseStopNone {
 		t.Fatalf("action-cell transaction stop reason = %v, want none", reason)
 	}
-	if terminalOrdinal != 3 || lastReduction != 2 {
-		t.Fatalf("action-cell result terminal=%d reduction=%d, want 3/2", terminalOrdinal, lastReduction)
+	if terminalOrdinal != 3 || lastReduction != 3 {
+		t.Fatalf("action-cell result terminal=%d reduction=%d, want 3/3", terminalOrdinal, lastReduction)
 	}
 	if !anyReduced {
 		t.Fatal("action-cell reductions did not report round progress")
 	}
-	if got, want := len(versions), 3; got != want {
+	if got, want := len(versions), 4; got != want {
 		t.Fatalf("version count = %d, want %d", got, want)
 	}
-	for i, want := range []Symbol{4, 5} {
+	for i, want := range []Symbol{4, 5, 6} {
 		if got := stackEntryNode(versions[i+1].top()).symbol; got != want {
 			t.Fatalf("reduction version[%d] symbol = %d, want %d", i+1, got, want)
 		}
