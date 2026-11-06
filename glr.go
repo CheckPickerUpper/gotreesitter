@@ -307,6 +307,7 @@ type glrMergeScratch struct {
 	slots                       []glrMergeSlot
 	largeSlots                  []glrMergeLargeSlot
 	perKeyCap                   int
+	overflowDepthCounts         []int32
 	language                    *Language
 	packedGSSVersionOrderActive bool
 	arena                       *nodeArena
@@ -6074,6 +6075,93 @@ func cRecoveryCostClassForSlice(scratch *glrMergeScratch, result []glrStack, key
 	return -1, sawDifferentCost
 }
 
+// overflowVictim picks the survivor an overflow candidate competes with, among
+// the count survivors at survivorAt(0..count-1) in result, and says whether
+// the candidate displaces it without a rank comparison.
+//
+// Acceptance and dynamic precedence are the grammar's own signals, so they
+// decide first: unless the candidate ties the weakest survivor on them, it
+// competes with that survivor as before. Within a tie, the remaining rank
+// (depth, offset, insertion order) says nothing about which reading the rest
+// of the input accepts. Survivors and the candidate share a state and
+// offset, so stack depth is what tells their readings apart: two tied
+// survivors of one depth are alternatives of the same shape, while a
+// candidate whose depth no tied survivor has is a reading none of them
+// carries. So a tied candidate competes on rank with the tied survivors of
+// its own depth; with none, it displaces the weakest tied survivor of a depth
+// held twice; with neither, it competes with the weakest survivor. depthCounts
+// is the merge scratch's per-depth tally, kept zeroed between calls so a merge
+// allocates it once; it is left all zero.
+func overflowVictim(result []glrStack, count int, survivorAt func(int) int, candidate *glrStack, depthCounts *[]int32) (int, bool) {
+	weakest := -1
+	for j := range count {
+		idx := survivorAt(j)
+		if weakest < 0 || stackCompareMerge(&result[idx], &result[weakest]) < 0 {
+			weakest = idx
+		}
+	}
+	if weakest < 0 || stackComparePrecedence(candidate, &result[weakest]) != 0 {
+		return weakest, false
+	}
+	candidateDepth := candidate.depth()
+	sameDepth := -1
+	for j := range count {
+		idx := survivorAt(j)
+		if stackComparePrecedence(&result[idx], &result[weakest]) != 0 {
+			continue
+		}
+		depth := result[idx].depth()
+		if depth >= len(*depthCounts) {
+			*depthCounts = append(*depthCounts, make([]int32, depth+1-len(*depthCounts))...)
+		}
+		(*depthCounts)[depth]++
+		if depth == candidateDepth && (sameDepth < 0 || stackCompareMerge(&result[idx], &result[sameDepth]) < 0) {
+			sameDepth = idx
+		}
+	}
+	shared := -1
+	for j := range count {
+		idx := survivorAt(j)
+		if stackComparePrecedence(&result[idx], &result[weakest]) != 0 {
+			continue
+		}
+		if (*depthCounts)[result[idx].depth()] > 1 && (shared < 0 || stackCompareMerge(&result[idx], &result[shared]) < 0) {
+			shared = idx
+		}
+	}
+	for j := range count {
+		idx := survivorAt(j)
+		if stackComparePrecedence(&result[idx], &result[weakest]) == 0 {
+			(*depthCounts)[result[idx].depth()] = 0
+		}
+	}
+	if sameDepth >= 0 {
+		return sameDepth, false
+	}
+	if shared >= 0 {
+		return shared, true
+	}
+	return weakest, false
+}
+
+// stackComparePrecedence ranks two stacks by the signals the grammar itself
+// declares, acceptance then dynamic precedence, and by nothing else.
+func stackComparePrecedence(a, b *glrStack) int {
+	if a.accepted != b.accepted {
+		if a.accepted {
+			return 1
+		}
+		return -1
+	}
+	if a.score != b.score {
+		if a.score > b.score {
+			return 1
+		}
+		return -1
+	}
+	return 0
+}
+
 func preferOverflowCandidate(candidate, incumbent *glrStack, candidateHash, incumbentHash uint64) bool {
 	cmp := stackCompareMerge(candidate, incumbent)
 	if cmp != 0 {
@@ -6536,25 +6624,25 @@ func mergeStacksWithScratch(stacks []glrStack, scratch *glrMergeScratch) []glrSt
 			}
 		}
 
-		// Per-key alternative budget reached: replace the weakest
-		// retained candidate only if this stack is better.
+		// Per-key alternative budget reached: overflowVictim names the
+		// retained candidate this stack competes with or displaces.
 		scratch.policyPruned = true
-		if slot.worstIndex >= 0 {
-			replacedSlot := mergeSlotPositionForIndex(slot, slot.worstIndex)
+		if victim, displace := overflowVictim(result, mergeSlotTrackedCount(slot), func(j int) int { return mergeSlotIndexAt(slot, j) }, &stack, &scratch.overflowDepthCounts); victim >= 0 {
+			replacedSlot := mergeSlotPositionForIndex(slot, victim)
 			incumbentHash := uint64(0)
 			if replacedSlot >= 0 {
 				incumbentHash = mergeSlotHashAt(slot, replacedSlot)
 			}
-			if !preferOverflowCandidate(&stack, &result[slot.worstIndex], hash, incumbentHash) {
+			if !displace && !preferOverflowCandidate(&stack, &result[victim], hash, incumbentHash) {
 				continue
 			}
 			if perfCountersEnabled {
 				perfRecordMergeReplacement()
 			}
 			if workCountInstrumentationEnabled {
-				workCountTopologyRenumberVersion(&stack, &result[slot.worstIndex])
+				workCountTopologyRenumberVersion(&stack, &result[victim])
 			}
-			result[slot.worstIndex] = stack
+			result[victim] = stack
 			if replacedSlot >= 0 {
 				mergeSlotSetHashAt(slot, replacedSlot, hash)
 				slot.hashMask = recomputeMergeSlotHashMask(slot)
@@ -6734,22 +6822,22 @@ func mergeStacksWithScratchDeferExact(alive []glrStack, scratch *glrMergeScratch
 		}
 
 		scratch.policyPruned = true
-		if slot.worstIndex >= 0 {
-			replacedSlot := mergeSlotPositionForIndex(slot, slot.worstIndex)
+		if victim, displace := overflowVictim(result, mergeSlotTrackedCount(slot), func(j int) int { return mergeSlotIndexAt(slot, j) }, &stack, &scratch.overflowDepthCounts); victim >= 0 {
+			replacedSlot := mergeSlotPositionForIndex(slot, victim)
 			incumbentHash := uint64(0)
 			if replacedSlot >= 0 {
 				incumbentHash = mergeSlotHashAt(slot, replacedSlot)
 			}
-			if !preferOverflowCandidate(&stack, &result[slot.worstIndex], hash, incumbentHash) {
+			if !displace && !preferOverflowCandidate(&stack, &result[victim], hash, incumbentHash) {
 				continue
 			}
 			if perfCountersEnabled {
 				perfRecordMergeReplacement()
 			}
 			if workCountInstrumentationEnabled {
-				workCountTopologyRenumberVersion(&stack, &result[slot.worstIndex])
+				workCountTopologyRenumberVersion(&stack, &result[victim])
 			}
-			result[slot.worstIndex] = stack
+			result[victim] = stack
 			if replacedSlot >= 0 {
 				mergeSlotSetHashAt(slot, replacedSlot, hash)
 				slot.hashMask = recomputeMergeSlotHashMask(slot)
@@ -6893,14 +6981,15 @@ func mergeStacksWithScratchLargeCap(alive []glrStack, scratch *glrMergeScratch, 
 			perfRecordMergePerKeyOverflow()
 		}
 
-		// Per-key alternative budget reached: replace the weakest
-		// retained candidate only if this stack is better.
+		// Per-key alternative budget reached: overflowVictim names the
+		// retained candidate this stack competes with or displaces.
 		scratch.policyPruned = true
-		if slot.worstIndex >= 0 {
+		if victim, displace := overflowVictim(result, slot.count, func(j int) int { return slot.indices[j] }, &stack, &scratch.overflowDepthCounts); victim >= 0 {
+			comparisons += uint64(2 * slot.count)
 			replacedSlot := -1
 			for j := 0; j < slot.count; j++ {
 				comparisons++
-				if slot.indices[j] == slot.worstIndex {
+				if slot.indices[j] == victim {
 					replacedSlot = j
 					break
 				}
@@ -6909,16 +6998,16 @@ func mergeStacksWithScratchLargeCap(alive []glrStack, scratch *glrMergeScratch, 
 			if replacedSlot >= 0 {
 				incumbentHash = slot.hashes[replacedSlot]
 			}
-			if !preferOverflowCandidate(&stack, &result[slot.worstIndex], hash, incumbentHash) {
+			if !displace && !preferOverflowCandidate(&stack, &result[victim], hash, incumbentHash) {
 				continue
 			}
 			if perfCountersEnabled {
 				perfRecordMergeReplacement()
 			}
 			if workCountInstrumentationEnabled {
-				workCountTopologyRenumberVersion(&stack, &result[slot.worstIndex])
+				workCountTopologyRenumberVersion(&stack, &result[victim])
 			}
-			result[slot.worstIndex] = stack
+			result[victim] = stack
 			if replacedSlot >= 0 {
 				slot.hashes[replacedSlot] = hash
 				slot.hashMask = recomputeMergeLargeSlotHashMask(slot)
