@@ -224,25 +224,16 @@ func TestGoLanguageFixtureLengthChangeIncrementalMatchesFresh(t *testing.T) {
 		}
 		defer fresh.Release()
 		assertLockedIncrementalTreeMatchesFresh(t, lang, incremental, fresh, "d5af3b86c49049bf95e1ebf5a098a4194a3d17d08b233c5fb9e5bfd90e37c801")
-		if profile.AcceptedErrorRetryAttempts != 1 || !profile.AcceptedErrorRetryAdopted ||
-			profile.AcceptedErrorRetryMergePerKey != 3 || profile.AcceptedErrorRetryCause != gotreesitter.IncrementalRetryCauseAcceptedErrorBaseMerge {
-			t.Fatalf("forward retry profile = %+v", profile)
-		}
+		// Go's fresh parse converges to one survivor per merge key, so the
+		// accepted-error retry runs at that width. Its incremental tree differs
+		// from fresh at this edit, so the parser verifies against fresh, keeps
+		// the fresh tree and names why reuse was not kept.
+		assertGoLengthChangeKeepsVerifiedFresh(t, "forward", profile)
 		rt := incremental.ParseRuntime()
-		if rt.IncrementalAcceptedErrorRetryAttempts != 1 || !rt.IncrementalAcceptedErrorRetryAdopted ||
-			rt.IncrementalAcceptedErrorRetryMergePerKey != 3 {
-			t.Fatalf("forward retry runtime = %+v", rt)
-		}
-		// Stack attribution: profile.MaxStacksSeen aggregates across every retry
-		// attempt; rt.MaxStacksSeen reflects only the selected (final) parse. The
-		// property under test is that the aggregate exceeds the selected value.
-		// The selected value dropped 18 -> 15 with campaign post-admission-frontier
-		// T2a: this edit is mid-file (byte 32063), so the leading run before it is
-		// now block-spliced instead of GLR-parsed, and the selected parse reaches a
-		// lower peak stack count. The aggregate (24) is unchanged and the tree is
-		// still byte-identical to fresh (the locked-hash assertion above).
-		if profile.MaxStacksSeen != 24 || rt.MaxStacksSeen != 15 {
-			t.Fatalf("forward stack attribution profile=%d selected_runtime=%d, want aggregate=24 selected=15", profile.MaxStacksSeen, rt.MaxStacksSeen)
+		// Stack attribution: profile.MaxStacksSeen aggregates across every
+		// attempt; rt.MaxStacksSeen reflects only the selected (fresh) parse.
+		if profile.MaxStacksSeen != 24 || rt.MaxStacksSeen != 3 {
+			t.Fatalf("forward stack attribution profile=%d selected_runtime=%d, want aggregate=24 selected=3", profile.MaxStacksSeen, rt.MaxStacksSeen)
 		}
 		if profile.TokensConsumed <= rt.TokensConsumed {
 			t.Fatalf("forward token attribution profile=%d selected_runtime=%d, want aggregate profile", profile.TokensConsumed, rt.TokensConsumed)
@@ -275,10 +266,22 @@ func TestGoLanguageFixtureLengthChangeIncrementalMatchesFresh(t *testing.T) {
 		}
 		defer fresh.Release()
 		assertLockedIncrementalTreeMatchesFresh(t, lang, incremental, fresh, "583df223904fe414c33bba3b474c6557ecdb20e7f47e304b9a09bfcc2da44539")
-		if profile.AcceptedErrorRetryAttempts != 1 || !profile.AcceptedErrorRetryAdopted || profile.AcceptedErrorRetryMergePerKey != 3 {
-			t.Fatalf("reverse retry profile = %+v", profile)
-		}
+		assertGoLengthChangeKeepsVerifiedFresh(t, "reverse", profile)
 	})
+}
+
+// assertGoLengthChangeKeepsVerifiedFresh checks that the Go length-change edit
+// ran one accepted-error retry at the fresh convergence width, did not adopt
+// it, and kept the fresh tree because the incremental tree was not proven equal.
+func assertGoLengthChangeKeepsVerifiedFresh(t *testing.T, direction string, profile gotreesitter.IncrementalParseProfile) {
+	t.Helper()
+	if profile.AcceptedErrorRetryAttempts != 1 || profile.AcceptedErrorRetryAdopted ||
+		profile.AcceptedErrorRetryMergePerKey != 1 || profile.AcceptedErrorRetryCause != gotreesitter.IncrementalRetryCauseAcceptedErrorBaseMerge {
+		t.Fatalf("%s retry profile = %+v", direction, profile)
+	}
+	if !profile.ReuseUnsupported || profile.ReuseUnsupportedReason != "recovery_frontier_unproven" || profile.ReusedSubtrees != 0 {
+		t.Fatalf("%s fresh fallback profile = %+v", direction, profile)
+	}
 }
 
 func TestCleanGoIncrementalDoesNotRunAcceptedErrorRetry(t *testing.T) {
@@ -465,7 +468,9 @@ func TestMalformedGoIncrementalRunsOneBaseMergeRetryAndKeepsFirstResult(t *testi
 	rt := incremental.ParseRuntime()
 	if profile.AcceptedErrorRetryAttempts != 1 || rt.IncrementalAcceptedErrorRetryAttempts != 1 ||
 		profile.AcceptedErrorRetryAdopted || rt.IncrementalAcceptedErrorRetryAdopted ||
-		profile.AcceptedErrorRetryMergePerKey != 3 || !profile.OldTreeReuseRoute || !rt.IncrementalOldTreeReuseRoute {
+		profile.AcceptedErrorRetryMergePerKey != 1 || !profile.OldTreeReuseRoute || !rt.IncrementalOldTreeReuseRoute {
+		// The base merge width is the fresh full parse's: one survivor per
+		// merge key, because Go's profile certifies GSS convergence.
 		t.Fatalf("malformed Go retry profile=%+v runtime=%+v", profile, rt)
 	}
 	incremental.Release()

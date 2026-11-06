@@ -140,6 +140,17 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 		// Let the absorbing version compete before the eagerly shifted
 		// missing-target version, matching C's assignment-error election.
 		recoveryMissingVersionTurns: true,
+		// One version per merge key in C's physical version order, and C's
+		// merge across dynamic precedence: when two readings reach one state
+		// with equal precedence, the earlier version's link wins. Receipts:
+		// 1570 of 1596 real Go files now match locked C exactly (1301 before,
+		// with one file parsed as an error that C reads clean); the remaining
+		// 26 differ only in the pre-existing blank-identifier import leaf. The
+		// four benchmark fixtures match locked C, and the query_compile fixture
+		// keeps 3 live stacks instead of 12.
+		fullParseGSSConvergence:      true,
+		compactPackedGSSVersionOrder: true,
+		legacyMergeAdmission:         gotreesitter.LegacyMergeAdmitDynamicPrecedence,
 		// Locked C exposes these aliased DFA leaves even when error recovery
 		// pops them before the enclosing string production can reduce.
 		visibleTerminalAliases: []visibleTerminalAliasProfile{
