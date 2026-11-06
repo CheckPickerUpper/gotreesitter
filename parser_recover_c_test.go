@@ -1964,12 +1964,12 @@ func TestCompactPackedGSSActionTransactionProcessesReductionVersionSameRound(t *
 			want: "high_root",
 		},
 		{
-			name: "terminal before reduction stops scan",
+			name: "reduction listed after terminal still runs",
 			actions: []ParseAction{
 				{Type: ParseActionAccept},
 				{Type: ParseActionReduce, Symbol: 3, ChildCount: 1, DynamicPrecedence: 1},
 			},
-			want: "low_root",
+			want: "high_root",
 		},
 	}
 	for _, test := range tests {
@@ -2171,11 +2171,14 @@ func TestCAppendActionCellReductionVersionsTerminalOwnsOriginal(t *testing.T) {
 	if reason != ParseStopNone {
 		t.Fatalf("action-cell transaction stop reason = %v, want none", reason)
 	}
-	if terminalOrdinal != 0 || lastReduction != -1 {
-		t.Fatalf("action-cell result terminal=%d reduction=%d, want 0/-1", terminalOrdinal, lastReduction)
+	// The shift still owns the original version, and the reduction listed
+	// after it runs into a version of its own, as C runs every reduction of a
+	// cell before the cell's shift.
+	if terminalOrdinal != 0 || lastReduction != 1 {
+		t.Fatalf("action-cell result terminal=%d reduction=%d, want 0/1", terminalOrdinal, lastReduction)
 	}
-	if anyReduced || len(versions) != 1 {
-		t.Fatalf("later reduction ran: anyReduced=%t versions=%d", anyReduced, len(versions))
+	if !anyReduced || len(versions) != 2 {
+		t.Fatalf("reduction listed after the shift did not run: anyReduced=%t versions=%d", anyReduced, len(versions))
 	}
 	if parser.disablePostReduceForkMerge {
 		t.Fatal("action-cell transaction did not restore post-reduce merge policy")
