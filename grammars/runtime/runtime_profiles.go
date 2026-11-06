@@ -131,12 +131,23 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 		// certifications were re-validated against this blob via the
 		// cgo_harness Go compact/recovery receipts (TestGoCompactIncrementalExecution*,
 		// TestGoCompactRecoveryVersionTurnsLockedC, TestStage6GoCompactCertification).
-		blobSHA256:                  mustRuntimeProfileSHA256("9ad1f8d7d0f2b9aa32c61bd8295b56177caabb0ae2fb8dd4617559ee0f71fed4"),
-		compactConvergedSplitDrops:  true,
-		compactOwnedEOFRecovery:     true,
+		blobSHA256:                 mustRuntimeProfileSHA256("9ad1f8d7d0f2b9aa32c61bd8295b56177caabb0ae2fb8dd4617559ee0f71fed4"),
+		compactConvergedSplitDrops: true,
+		compactOwnedEOFRecovery:    true,
 		// Let the absorbing version compete before the eagerly shifted
 		// missing-target version, matching C's assignment-error election.
 		recoveryMissingVersionTurns: true,
+		// One version per merge key in C's physical version order, and C's
+		// merge across dynamic precedence: when two readings reach one state
+		// with equal precedence, the earlier version's link wins. Receipts:
+		// 1570 of 1596 real Go files now match locked C exactly (1301 before,
+		// with one file parsed as an error that C reads clean); the remaining
+		// 26 differ only in the pre-existing blank-identifier import leaf. The
+		// four benchmark fixtures match locked C, and the query_compile fixture
+		// keeps 3 live stacks instead of 12.
+		fullParseGSSConvergence:      true,
+		compactPackedGSSVersionOrder: true,
+		legacyMergeAdmission:         gotreesitter.LegacyMergeAdmitDynamicPrecedence,
 		// Locked C exposes these aliased DFA leaves even when error recovery
 		// pops them before the enclosing string production can reduce.
 		visibleTerminalAliases: []visibleTerminalAliasProfile{

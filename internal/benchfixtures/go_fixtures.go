@@ -89,7 +89,7 @@ var goFullParseFixtures = [...]Fixture{
 		SHA256:              "b788ee19b0075f0b9b567a9f93ea657e715bc8a6a40a99d3ca5c761404e71894",
 		CompressedSHA256:    "8811a477187606ab2a0be003924e2750c8d10cb5e6ef29e8f0f673c5bd5ccfa4",
 		DeepTreeSHA256:      "ecc090a83a4343a1c7c2afbad63277f5b4d60c42d8d94a2af2a9b16e46f2ccb5",
-		WorkloadIdentity:    WorkloadIdentity{MinMaxStacksSeen: 8, MinMultiStackIterations: 500, MinMultiStackTokens: 400},
+		WorkloadIdentity:    WorkloadIdentity{MinMaxStacksSeen: 3, MinMultiStackIterations: 200, MinMultiStackTokens: 200},
 		compressedAssetPath: "testdata/query_compile.go.gz",
 	},
 	{
@@ -100,7 +100,7 @@ var goFullParseFixtures = [...]Fixture{
 		SHA256:              "74c0705f8729670559492fb5460a01b2a1a2a109928e1aeb52736e485e8ff097",
 		CompressedSHA256:    "e8c92713adda73b661c1e41dae09d4f76f1447b3f8ddd5b3348b67ce655ee243",
 		DeepTreeSHA256:      "b3f9814b65763642d4eac58b9065018048ea13e6f10d56afb28a0479bf5a68a1",
-		WorkloadIdentity:    WorkloadIdentity{MinMaxStacksSeen: 8, MinMultiStackIterations: 500, MinMultiStackTokens: 400},
+		WorkloadIdentity:    WorkloadIdentity{MinMaxStacksSeen: 3, MinMultiStackIterations: 200, MinMultiStackTokens: 200},
 		compressedAssetPath: "testdata/rewrite.go.gz",
 	},
 	{
@@ -111,7 +111,7 @@ var goFullParseFixtures = [...]Fixture{
 		SHA256:              "009aa9fd5352c712f3839670c7df8a9b00ae878ee20dc88131a438b2d5edfd9a",
 		CompressedSHA256:    "a064d45748fd555209971728d9740510c2ca7449870b54acb861909afea2c8c9",
 		DeepTreeSHA256:      "583df223904fe414c33bba3b474c6557ecdb20e7f47e304b9a09bfcc2da44539",
-		WorkloadIdentity:    WorkloadIdentity{MinMaxStacksSeen: 8, MinMultiStackIterations: 500, MinMultiStackTokens: 400},
+		WorkloadIdentity:    WorkloadIdentity{MinMaxStacksSeen: 3, MinMultiStackIterations: 200, MinMultiStackTokens: 200},
 		compressedAssetPath: "testdata/language.go.gz",
 	},
 	{
@@ -122,7 +122,7 @@ var goFullParseFixtures = [...]Fixture{
 		SHA256:              "a7e4a1a64b25a60aea36183b9d6d53dcd9240942cdb10e67a3cf9e6ce30f95b2",
 		CompressedSHA256:    "7d64368d4dbffca1b3cc472ff3397871c23e082efb1a2bdba5f9670564cc7b22",
 		DeepTreeSHA256:      "1472cfd9a014d4034dbc1456afd12c282630ef787c3543cf0cecb73619883ad2",
-		WorkloadIdentity:    WorkloadIdentity{MinMaxStacksSeen: 8, MinMultiStackIterations: 500, MinMultiStackTokens: 400},
+		WorkloadIdentity:    WorkloadIdentity{MinMaxStacksSeen: 3, MinMultiStackIterations: 200, MinMultiStackTokens: 200},
 		compressedAssetPath: "testdata/grammargen_lr.go.gz",
 	},
 }
