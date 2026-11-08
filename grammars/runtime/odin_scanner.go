@@ -36,13 +36,13 @@ const (
 // that renumbers absolute symbol IDs without touching the externals list
 // order.
 var odinDefaultSymTable = [odinTokenCount]gotreesitter.Symbol{
-	123, // _newline
-	124, // _backslash
-	125, // _nl_comma, displays as ","
-	126, // float
-	127, // block_comment
+	124, // _newline
+	125, // _backslash
+	126, // _nl_comma, displays as ","
+	127, // float
+	128, // block_comment
 	2,   // "{" (never emitted by SetResultSymbol; checked only via isValid)
-	110, // "\"" (never emitted by SetResultSymbol; checked only via isValid)
+	111, // "\"" (never emitted by SetResultSymbol; checked only via isValid)
 }
 
 // odinExternalScannerSpec records the source contract for this
@@ -54,9 +54,9 @@ var odinDefaultSymTable = [odinTokenCount]gotreesitter.Symbol{
 var odinExternalScannerSpec = ExternalScannerSpec{
 	Language:       "odin",
 	UpstreamRepo:   "https://github.com/CheckPickerUpper/tree-sitter-odin",
-	UpstreamCommit: "78b21d5f22f62434af64e6e1c8c500544f41c01f",
+	UpstreamCommit: "2b234040ffa631df47535d2f9bc3cd9a4348af76",
 	SourceFiles: []ExternalScannerSourceFile{
-		{Path: "src/grammar.json", SHA256: "862b8c60a04df49a40443144de053bdedd889c0cf2403bec12dc905059d1c474"},
+		{Path: "src/grammar.json", SHA256: "c70ee91d409b9eb63cea8379729b5d5153d6cbf15d9a7bafc66d71b141969b51"},
 		{Path: "src/scanner.c", SHA256: "e342d07d3e35c3865a6bda0587f3a3b46a7b2411fd93cbee01dc40ab7631c93b"},
 	},
 	Externals: []string{
