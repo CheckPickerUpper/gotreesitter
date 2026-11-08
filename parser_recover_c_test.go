@@ -1691,7 +1691,7 @@ func TestCAppendActionReductionVersionsStopsOnIncompleteExactSelection(t *testin
 		{gss: gssStack{head: scratch.allocNode(rightEntry, popTo, 2)}, byteOffset: 2},
 	}
 
-	gotVersions, reductionVersion, reason := parser.cAppendActionReductionVersions(versions, candidates, 1, arena)
+	gotVersions, reductionVersion, reason := parser.cAppendActionReductionVersions(versions, candidates, 1, arena, cReductionAppendCallerRecovery)
 	if reason != ParseStopInvariantViolation {
 		t.Fatalf("action-version append stop reason = %v, want invariant violation", reason)
 	}
@@ -1853,7 +1853,7 @@ func TestCAppendActionReductionVersionsCollapsesSamePopBeforeOlderMerge(t *testi
 		{gss: gssStack{head: scratch.allocNode(newStackEntryNode(9, highParent), popTo, 2)}, byteOffset: 2},
 	}
 
-	versions, reductionVersion, reason := parser.cAppendActionReductionVersions(versions, candidates, 1, arena)
+	versions, reductionVersion, reason := parser.cAppendActionReductionVersions(versions, candidates, 1, arena, cReductionAppendCallerRecovery)
 	if reason != ParseStopNone {
 		t.Fatalf("append action reduction versions stop reason = %v, want none", reason)
 	}
@@ -2810,7 +2810,7 @@ func TestCAppendReductionVersionCallerSeedFirstAppendAllocatesZero(t *testing.T)
 	allocs := testing.AllocsPerRun(1000, func() {
 		versions := callerSeed[:1]
 		versions[0] = glrStack{}
-		out, appended := parser.cAppendReductionVersion(versions, candidate, 0)
+		out, appended := parser.cAppendReductionVersion(versions, candidate, 0, cReductionAppendCallerRecovery)
 		if !appended || len(out) != 2 {
 			t.Fatalf("caller-seeded append: appended=%v len=%d, want true/2", appended, len(out))
 		}

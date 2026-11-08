@@ -3409,6 +3409,7 @@ func (p *Parser) cDoAllPotentialReductionsWithSharedCount(source []byte, start g
 			versions, actionReductionVersion, reason = p.cAppendReductionActionVersions(
 				source, versions, v, act, tok, nodeCount, arena, entryScratch,
 				gssScratch, tmpEntries, trackChildErrors, &singletonCandidate, nil, -1,
+				cReductionAppendCallerRecovery,
 			)
 			p.cRecoveryReductionForkLimit = 0
 			if reason != ParseStopNone {
@@ -3481,7 +3482,7 @@ func (p *Parser) cReductionCandidatesForAction(source []byte, start glrStack, ac
 // version. It appends every surviving pop result in C stack-version order and
 // merges each result into earlier compatible versions before the caller can
 // promote a result into the source slot.
-func (p *Parser) cAppendReductionActionVersions(source []byte, versions []glrStack, originalVersion int, act ParseAction, tok Token, nodeCount *int, arena *nodeArena, entryScratch *glrEntryScratch, gssScratch *gssScratch, tmpEntries *[]stackEntry, trackChildErrors *bool, singletonCandidate *glrStack, anyReduced *bool, actionOrdinal int) ([]glrStack, int, ParseStopReason) {
+func (p *Parser) cAppendReductionActionVersions(source []byte, versions []glrStack, originalVersion int, act ParseAction, tok Token, nodeCount *int, arena *nodeArena, entryScratch *glrEntryScratch, gssScratch *gssScratch, tmpEntries *[]stackEntry, trackChildErrors *bool, singletonCandidate *glrStack, anyReduced *bool, actionOrdinal int, caller cReductionAppendCaller) ([]glrStack, int, ParseStopReason) {
 	if workCountInstrumentationEnabled {
 		defer workCountTopologyFinishReductionAction() // work-count-assembly: topology reduction-append finish seam
 	}
@@ -3497,7 +3498,7 @@ func (p *Parser) cAppendReductionActionVersions(source []byte, versions []glrSta
 	}
 	if hasSingletonCandidate {
 		var appended bool
-		versions, appended = p.cAppendReductionVersion(versions, *singletonCandidate, originalVersion)
+		versions, appended = p.cAppendReductionVersion(versions, *singletonCandidate, originalVersion, caller)
 		if appended {
 			return versions, len(versions) - 1, ParseStopNone
 		}
@@ -3506,7 +3507,7 @@ func (p *Parser) cAppendReductionActionVersions(source []byte, versions []glrSta
 	if len(actionCandidates) == 0 {
 		return versions, -1, ParseStopNone
 	}
-	versions, reductionVersion, reason := p.cAppendActionReductionVersions(versions, actionCandidates, originalVersion, arena)
+	versions, reductionVersion, reason := p.cAppendActionReductionVersions(versions, actionCandidates, originalVersion, arena, caller)
 	return versions, reductionVersion, reason
 }
 
@@ -3547,6 +3548,7 @@ func (p *Parser) cAppendActionCellReductionVersions(source []byte, versions []gl
 		versions, reductionVersion, reason = p.cAppendReductionActionVersions(
 			source, versions, originalVersion, action, tok, nodeCount, arena,
 			entryScratch, gssScratch, tmpEntries, trackChildErrors, &singletonCandidate, anyReduced, actionOrdinal,
+			cReductionAppendCallerActionCell,
 		)
 		if reason != ParseStopNone {
 			return versions, lastReductionVersion, -1, reason
@@ -3660,7 +3662,7 @@ func (p *Parser) cReductionCandidatesForActionInto(source []byte, start glrStack
 	return candidates, false, ParseStopNone
 }
 
-func (p *Parser) cAppendActionReductionVersions(versions []glrStack, candidates []glrStack, originalVersion int, arena *nodeArena) ([]glrStack, int, ParseStopReason) {
+func (p *Parser) cAppendActionReductionVersions(versions []glrStack, candidates []glrStack, originalVersion int, arena *nodeArena, caller cReductionAppendCaller) ([]glrStack, int, ParseStopReason) {
 	var reason ParseStopReason
 	candidates, reason = p.cCollapseSamePopReductionCandidates(candidates, arena)
 	if reason != ParseStopNone {
@@ -3669,7 +3671,7 @@ func (p *Parser) cAppendActionReductionVersions(versions []glrStack, candidates 
 	firstAppended := -1
 	for i := range candidates {
 		var appended bool
-		versions, appended = p.cAppendReductionVersion(versions, candidates[i], originalVersion)
+		versions, appended = p.cAppendReductionVersion(versions, candidates[i], originalVersion, caller)
 		if appended && firstAppended < 0 {
 			firstAppended = len(versions) - 1
 		}
@@ -3701,7 +3703,29 @@ func (p *Parser) cCollapseSamePopReductionCandidates(candidates []glrStack, aren
 	return out, ParseStopNone
 }
 
-func (p *Parser) cAppendReductionVersion(versions []glrStack, candidate glrStack, originalVersion int) ([]glrStack, bool) {
+// cReductionAppendCaller names the caller that appends a reduction result,
+// because the two callers treat a result that leaves its source unchanged
+// differently.
+type cReductionAppendCaller uint8
+
+const (
+	// cReductionAppendCallerRecovery is ts_parser__do_all_potential_reductions.
+	// Its own loop merges each result into the earlier versions of the call.
+	cReductionAppendCallerRecovery cReductionAppendCaller = iota
+	// cReductionAppendCallerActionCell is the packed action-cell transaction.
+	// Packed order dispatches each appended version in the same round.
+	cReductionAppendCallerActionCell
+)
+
+// cAppendReductionVersion merges a pop result into an earlier compatible
+// version, or appends it as a new version.
+func (p *Parser) cAppendReductionVersion(versions []glrStack, candidate glrStack, originalVersion int, caller cReductionAppendCaller) ([]glrStack, bool) {
+	if caller == cReductionAppendCallerActionCell && cReductionLeavesSourceHead(versions, originalVersion, &candidate) {
+		if workCountInstrumentationEnabled {
+			workCountTopologyRetireVersionIfActive(&candidate)
+		}
+		return versions, false
+	}
 	for i := range versions {
 		if i == originalVersion {
 			continue
@@ -3720,6 +3744,25 @@ func (p *Parser) cAppendReductionVersion(versions []glrStack, candidate glrStack
 	}
 	versions = append(versions, candidate)
 	return versions, true
+}
+
+// cReductionLeavesSourceHead reports whether a reduction result has its
+// source version's head: the same state at the same byte and depth. Such a
+// reduction pops one node and its goto returns to the state it popped from,
+// so the result runs the same action cell and forks the same reduction again.
+// Packed order dispatches it in the same round, and the round never ends.
+// The source keeps the cell's terminal action, so dropping the result loses
+// only the readings that wrap the top node in the same symbol again and again.
+// A table from tree-sitter's generator has no such cycle, since C would loop
+// on it too; a grammargen table can.
+func cReductionLeavesSourceHead(versions []glrStack, originalVersion int, candidate *glrStack) bool {
+	if originalVersion < 0 || originalVersion >= len(versions) {
+		return false
+	}
+	source := &versions[originalVersion]
+	return candidate.top().state == source.top().state &&
+		candidate.byteOffset == source.byteOffset &&
+		candidate.depth() == source.depth()
 }
 
 // cRemoveReductionVersion applies C's stable stack-version deletion. Every
