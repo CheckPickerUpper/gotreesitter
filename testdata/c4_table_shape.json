@@ -4,7 +4,7 @@
   "grammars": [
     {
       "grammar": "go",
-      "blob_sha256": "9ad1f8d7d0f2b9aa32c61bd8295b56177caabb0ae2fb8dd4617559ee0f71fed4",
+      "blob_sha256": "4456f9b11706face73bd511d6e80bbd2f0d468055065296db6f5334fa101d379",
       "states": 1507,
       "token_count": 95,
       "symbol_count": 229,

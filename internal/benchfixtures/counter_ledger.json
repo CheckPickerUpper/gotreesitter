@@ -12777,7 +12777,7 @@
       "full": {
         "tokens": 107,
         "new_nodes": 232,
-        "max_live_versions": 2,
+        "max_live_versions": 1,
         "multi_version_token_share_ppm": 0,
         "reused_bytes": 0,
         "block_splices": 0,
@@ -12815,7 +12815,7 @@
       "route": "default",
       "full": {
         "tokens": 107,
-        "new_nodes": 288,
+        "new_nodes": 296,
         "max_live_versions": 1,
         "multi_version_token_share_ppm": 0,
         "reused_bytes": 0,
@@ -12832,7 +12832,7 @@
           "route": "default",
           "counters": {
             "tokens": 107,
-            "new_nodes": 480,
+            "new_nodes": 488,
             "max_live_versions": 1,
             "multi_version_token_share_ppm": 0,
             "reused_bytes": 0,

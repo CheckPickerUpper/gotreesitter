@@ -24,7 +24,7 @@ const (
 	// GoGrammarBlobSHA256 identifies the exact gotreesitter Go grammar blob.
 	// Regenerated 2026-10-24 with cmd/grammargen (no -lr-split; see
 	// grammargen/README.md and docs/grammar-ownership.md).
-	GoGrammarBlobSHA256 = "9ad1f8d7d0f2b9aa32c61bd8295b56177caabb0ae2fb8dd4617559ee0f71fed4"
+	GoGrammarBlobSHA256 = "4456f9b11706face73bd511d6e80bbd2f0d468055065296db6f5334fa101d379"
 )
 
 var goFixtureRequiredNodeKinds = [...]string{
