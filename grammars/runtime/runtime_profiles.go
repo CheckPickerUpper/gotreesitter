@@ -622,7 +622,7 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 	// receipt, 25/25 real-corpus parity, and the race-timed witness (see the
 	// commit that added this comment).
 	"swift": {
-		blobSHA256: mustRuntimeProfileSHA256("33fd9742ec9024832c89e8d4539f633036cfe28286a07a9fbff6f947b9de6b18"),
+		blobSHA256: mustRuntimeProfileSHA256("6ab89dd5c502e0fd2212955afae32e7a015a865cf56b9dd3e5983d4355418327"),
 		// Preserve navigation expressions with C's physical version order.
 		compactPackedGSSVersionOrder: true,
 		// The locked C ERROR lex row enables all 34 external symbols.

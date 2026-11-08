@@ -3952,6 +3952,11 @@ func resolveActionConflict(lookaheadSym int, actions []lrAction, ng *NormalizedG
 		// ladder above already knows how to answer (for example JavaScript's
 		// update_expression vs binary_expression).
 		if preferred, ok := preferredAdvancedShiftPrecedence(shifts, reduces, ng); ok {
+			if len(preferred) > 1 {
+				// Every reduce outranks the shift; choose among the reduces as a
+				// reduce/reduce conflict.
+				return resolveActionConflict(lookaheadSym, preferred, ng)
+			}
 			return preferred, nil
 		}
 
@@ -5494,36 +5499,41 @@ func shiftMetadataForReduce(shift lrAction, reduceLHS int, ng *NormalizedGrammar
 // preferredAdvancedShiftPrecedence compares only items whose production prefix
 // has consumed input. Tree-sitter excludes closure items at dot zero.
 func preferredAdvancedShiftPrecedence(shifts, reduces []lrAction, ng *NormalizedGrammar) ([]lrAction, bool) {
-	if len(shifts) != 1 || len(reduces) != 1 || ng == nil {
-		return nil, false
-	}
-	reduce := reduces[0]
-	if reduce.prodIdx < 0 || reduce.prodIdx >= len(ng.Productions) {
+	if len(shifts) != 1 || len(reduces) == 0 || ng == nil {
 		return nil, false
 	}
 	contributors := shifts[0].conflictContributors
 	if len(contributors) == 0 {
 		return nil, false
 	}
-	reducePrec := ng.Productions[reduce.prodIdx].Prec
+	// Tree-sitter compares the shift's advanced items with every competing
+	// reduce: the conflict resolves only when all of them agree. A reduce
+	// that a generated repeat helper shares with the element it repeats is
+	// one more reduce, not a reason to keep the shift.
 	direction := 0
-	for _, contributor := range contributors {
-		cmp := 0
-		if contributor.prec < reducePrec {
-			cmp = -1
-		} else if contributor.prec > reducePrec {
-			cmp = 1
-		}
-		if cmp == 0 {
+	for _, reduce := range reduces {
+		if reduce.prodIdx < 0 || reduce.prodIdx >= len(ng.Productions) {
 			return nil, false
 		}
-		if direction != 0 && direction != cmp {
-			return nil, false
+		reducePrec := ng.Productions[reduce.prodIdx].Prec
+		for _, contributor := range contributors {
+			cmp := 0
+			if contributor.prec < reducePrec {
+				cmp = -1
+			} else if contributor.prec > reducePrec {
+				cmp = 1
+			}
+			if cmp == 0 {
+				return nil, false
+			}
+			if direction != 0 && direction != cmp {
+				return nil, false
+			}
+			direction = cmp
 		}
-		direction = cmp
 	}
 	if direction < 0 {
-		return []lrAction{reduce}, true
+		return append([]lrAction(nil), reduces...), true
 	}
 	if direction > 0 {
 		return []lrAction{shifts[0]}, true
