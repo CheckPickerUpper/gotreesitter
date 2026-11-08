@@ -2003,6 +2003,17 @@ func ruleReachesAlias(r *Rule, gRules map[string]*Rule, seen map[string]bool, de
 //
 // This handles repeat/repeat1 at ALL levels including the root.
 func prepareRule(r *Rule, parentName string, st *symbolTable, auxRules map[string]*Rule, auxOrigins map[string]map[string]bool, counter *int) *Rule {
+	return prepareRuleUnderAssociativity(r, parentName, nil, st, auxRules, auxOrigins, counter)
+}
+
+// prepareRuleUnderAssociativity is prepareRule for a rule nested inside the
+// prec.left or prec.right wrapper enclosingAssociativity (nil when none
+// encloses it). A repeat lowered into a helper nonterminal keeps that wrapper
+// on the helper's body: tree-sitter gives every step under the wrapper its
+// precedence and associativity, the repeated steps included, so a shift that
+// continues the repeat ties with a reduce of the enclosing rule and the
+// associativity settles it.
+func prepareRuleUnderAssociativity(r *Rule, parentName string, enclosingAssociativity *Rule, st *symbolTable, auxRules map[string]*Rule, auxOrigins map[string]map[string]bool, counter *int) *Rule {
 	if r == nil {
 		return r
 	}
@@ -2014,36 +2025,46 @@ func prepareRule(r *Rule, parentName string, st *symbolTable, auxRules map[strin
 	// Handle the current node.
 	switch r.Kind {
 	case RuleRepeat:
-		preparedInner := prepareRule(cloneRule(r.Children[0]), parentName, st, auxRules, auxOrigins, counter)
+		preparedInner := prepareRuleUnderAssociativity(cloneRule(r.Children[0]), parentName, enclosingAssociativity, st, auxRules, auxOrigins, counter)
 		// If the inner rule is a wide CHOICE and we have a lift threshold,
 		// extract it into an auxiliary nonterminal to prevent the repeat
 		// helper from creating N² productions (where N = choice width).
 		preparedInner = maybeExtractWideChoice(preparedInner, parentName, st, auxRules, auxOrigins, counter)
 		if st.binaryRepeatMode {
-			auxName := ensureRepeatAuxBinary(parentName, preparedInner, st, auxRules, counter)
+			auxName := ensureRepeatAuxBinary(parentName, preparedInner, enclosingAssociativity, st, auxRules, counter)
 			recordAuxOrigin(auxOrigins, auxName, parentName)
 			return Choice(Sym(auxName), Blank())
 		}
-		auxName := ensureRepeatAuxLinear(parentName, preparedInner, st, auxRules, counter)
+		auxName := ensureRepeatAuxLinear(parentName, preparedInner, enclosingAssociativity, st, auxRules, counter)
 		recordAuxOrigin(auxOrigins, auxName, parentName)
 		return Choice(Blank(), cloneRule(preparedInner), Sym(auxName))
 
 	case RuleRepeat1:
-		preparedInner := prepareRule(cloneRule(r.Children[0]), parentName, st, auxRules, auxOrigins, counter)
+		preparedInner := prepareRuleUnderAssociativity(cloneRule(r.Children[0]), parentName, enclosingAssociativity, st, auxRules, auxOrigins, counter)
 		preparedInner = maybeExtractWideChoice(preparedInner, parentName, st, auxRules, auxOrigins, counter)
 		if st.binaryRepeatMode {
-			auxName := ensureRepeatAuxBinary(parentName, preparedInner, st, auxRules, counter)
+			auxName := ensureRepeatAuxBinary(parentName, preparedInner, enclosingAssociativity, st, auxRules, counter)
 			recordAuxOrigin(auxOrigins, auxName, parentName)
 			return Sym(auxName)
 		}
-		auxName := ensureRepeatAuxLinear(parentName, preparedInner, st, auxRules, counter)
+		auxName := ensureRepeatAuxLinear(parentName, preparedInner, enclosingAssociativity, st, auxRules, counter)
 		recordAuxOrigin(auxOrigins, auxName, parentName)
 		return Choice(cloneRule(preparedInner), Sym(auxName))
 
 	case RuleOptional:
 		// optional(x) → choice(x, blank)
-		inner := prepareRule(r.Children[0], parentName, st, auxRules, auxOrigins, counter)
+		inner := prepareRuleUnderAssociativity(r.Children[0], parentName, enclosingAssociativity, st, auxRules, auxOrigins, counter)
 		return Choice(inner, Blank())
+
+	case RulePrecLeft, RulePrecRight:
+		enclosingAssociativity = &Rule{Kind: r.Kind, Prec: r.Prec}
+
+	case RulePrec:
+		// A plain prec inside an associative wrapper replaces the precedence
+		// and keeps the associativity, as in tree-sitter.
+		if enclosingAssociativity != nil {
+			enclosingAssociativity = &Rule{Kind: enclosingAssociativity.Kind, Prec: r.Prec}
+		}
 
 	case RuleAlias:
 		// alias(repeat(X), name) and alias(repeat1(X), name) — possibly through
@@ -2125,7 +2146,7 @@ func prepareRule(r *Rule, parentName string, st *symbolTable, auxRules map[strin
 
 	// Recurse into children.
 	for i, c := range r.Children {
-		r.Children[i] = prepareRule(c, parentName, st, auxRules, auxOrigins, counter)
+		r.Children[i] = prepareRuleUnderAssociativity(c, parentName, enclosingAssociativity, st, auxRules, auxOrigins, counter)
 	}
 
 	// For SEQ nodes in grammars with ChoiceLiftThreshold: lift inline CHOICE
@@ -2271,10 +2292,10 @@ func liftLargeSeqChoices(seq *Rule, parentName string, st *symbolTable, auxRules
 	return &result
 }
 
-func ensureRepeatAuxLinear(parentName string, inner *Rule, st *symbolTable, auxRules map[string]*Rule, counter *int) string {
+func ensureRepeatAuxLinear(parentName string, inner *Rule, enclosingAssociativity *Rule, st *symbolTable, auxRules map[string]*Rule, counter *int) string {
 	key := ""
 	if shouldReuseRepeatAux(st, parentName) {
-		key = "linear:" + canonicalRuleKey(inner)
+		key = "linear:" + canonicalRuleKey(repeatAuxBody(inner, enclosingAssociativity))
 		if auxName, ok := st.repeatAuxByKey[key]; ok {
 			st.markGeneratedRepeatAux(auxName)
 			return auxName
@@ -2286,10 +2307,10 @@ func ensureRepeatAuxLinear(parentName string, inner *Rule, st *symbolTable, auxR
 		st.addSymbol(auxName, SymbolInfo{
 			Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal, GeneratedRepeatAux: true,
 		})
-		auxRules[auxName] = Choice(
+		auxRules[auxName] = repeatAuxBody(Choice(
 			Seq(Sym(auxName), cloneRule(inner)),
 			Seq(cloneRule(inner), cloneRule(inner)),
-		)
+		), enclosingAssociativity)
 	}
 	st.markGeneratedRepeatAux(auxName)
 	if key != "" {
@@ -2298,10 +2319,10 @@ func ensureRepeatAuxLinear(parentName string, inner *Rule, st *symbolTable, auxR
 	return auxName
 }
 
-func ensureRepeatAuxBinary(parentName string, inner *Rule, st *symbolTable, auxRules map[string]*Rule, counter *int) string {
+func ensureRepeatAuxBinary(parentName string, inner *Rule, enclosingAssociativity *Rule, st *symbolTable, auxRules map[string]*Rule, counter *int) string {
 	key := ""
 	if shouldReuseRepeatAux(st, parentName) {
-		key = "binary:" + canonicalRuleKey(inner)
+		key = "binary:" + canonicalRuleKey(repeatAuxBody(inner, enclosingAssociativity))
 		if auxName, ok := st.repeatAuxByKey[key]; ok {
 			st.markGeneratedRepeatAux(auxName)
 			return auxName
@@ -2313,16 +2334,25 @@ func ensureRepeatAuxBinary(parentName string, inner *Rule, st *symbolTable, auxR
 		st.addSymbol(auxName, SymbolInfo{
 			Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal, GeneratedRepeatAux: true,
 		})
-		auxRules[auxName] = Choice(
+		auxRules[auxName] = repeatAuxBody(Choice(
 			Seq(Sym(auxName), Sym(auxName)),
 			cloneRule(inner),
-		)
+		), enclosingAssociativity)
 	}
 	st.markGeneratedRepeatAux(auxName)
 	if key != "" {
 		st.repeatAuxByKey[key] = auxName
 	}
 	return auxName
+}
+
+// repeatAuxBody wraps a repeat helper's body in the prec.left or prec.right
+// wrapper that encloses the repeat, or returns it unchanged when none does.
+func repeatAuxBody(body *Rule, enclosingAssociativity *Rule) *Rule {
+	if enclosingAssociativity == nil {
+		return body
+	}
+	return &Rule{Kind: enclosingAssociativity.Kind, Prec: enclosingAssociativity.Prec, Children: []*Rule{body}}
 }
 
 func shouldReuseRepeatAux(st *symbolTable, parentName string) bool {
@@ -3747,7 +3777,7 @@ func flattenRule2(r *Rule, lhsID int, st *symbolTable, prodIDCounter *int) []Pro
 			// Recursively flatten — alternatives may contain more choices.
 			altProds := flattenRule2(altInner, lhsID, st, prodIDCounter)
 			for i := range altProds {
-				suppressExplicitZeroWrapperAssoc := false
+				suppressExplicitZeroWrapperPrec := false
 				if altPrec == 0 && altHasPrec && altAssoc != AssocNone && altDyn == 0 &&
 					len(altProds[i].RHS) == 1 && len(altProds[i].Fields) == 0 && len(altProds[i].Aliases) == 0 {
 					rhsSym := altProds[i].RHS[0]
@@ -3755,11 +3785,11 @@ func flattenRule2(r *Rule, lhsID int, st *symbolTable, prodIDCounter *int) []Pro
 						// A top-level prec.left/right(0, choice(...)) wrapper around a
 						// single nonterminal pass-through should not manufacture an
 						// explicit zero-precedence reduce on the wrapper production
-						// itself. That metadata belongs on real sequence productions;
+						// itself. That mark belongs on real sequence productions;
 						// attaching it to wrapper reductions like `_string ->
 						// concatenated_string` can make C GNU asm prefer the wrapper
 						// reduce over shifting the following operand-list colon.
-						suppressExplicitZeroWrapperAssoc = true
+						suppressExplicitZeroWrapperPrec = true
 					}
 				}
 				if altHasPrec && altPrec != 0 {
@@ -3767,10 +3797,13 @@ func flattenRule2(r *Rule, lhsID int, st *symbolTable, prodIDCounter *int) []Pro
 				} else if altProds[i].Prec == 0 {
 					altProds[i].Prec = altPrec
 				}
-				if !suppressExplicitZeroWrapperAssoc && altHasPrec && (altPrec != 0 || !altProds[i].HasExplicitPrec) {
+				if !suppressExplicitZeroWrapperPrec && altHasPrec && (altPrec != 0 || !altProds[i].HasExplicitPrec) {
 					altProds[i].HasExplicitPrec = true
 				}
-				if !suppressExplicitZeroWrapperAssoc && (altProds[i].Assoc == AssocNone || altPrec != 0) {
+				// The wrapper's associativity reaches every production under
+				// it, the pass-through ones included, as tree-sitter gives it to
+				// every step; only the explicit-precedence mark is withheld.
+				if altProds[i].Assoc == AssocNone || altPrec != 0 {
 					altProds[i].Assoc = altAssoc
 				}
 				if altDyn != 0 {
@@ -3864,9 +3897,12 @@ func flattenRule2(r *Rule, lhsID int, st *symbolTable, prodIDCounter *int) []Pro
 				// suffixes like seq(name, choice(statement_block, blank)) get a
 				// synthetic explicit epsilon-style reduce that can beat shifting
 				// the concrete branch too early (TypeScript internal_module).
+				// The wrapper's associativity stays: tree-sitter gives every
+				// step under prec.left or prec.right that associativity, so
+				// the reduce that ends without the optional suffix still
+				// settles a tie with a shift by it.
 				altPrec = 0
 				altHasPrec = false
-				altAssoc = AssocNone
 			}
 			if !altHasPrec && altPrec == 0 && altAssoc == AssocNone && altDyn == 0 {
 				altPrec, altAssoc, altDyn, altHasPrec = scanInnerPrec(inner)
@@ -4310,6 +4346,7 @@ func flattenHiddenChoiceAlts(g *Grammar, generatedHiddenRules map[string]bool) *
 	aliasReferenced := hiddenSymbolsReferencedUnderAlias(g, generatedHiddenRules)
 	continuationFirsts := continuationFirstsByHiddenSymbol(g, generatedHiddenRules)
 	continuationSensitive := continuationSensitiveHiddenSymbols(g, generatedHiddenRules, continuationFirsts)
+	endingSymbols := symbolsEndingAProduction(g)
 
 	for _, name := range g.RuleOrder {
 		isGeneratedHidden := generatedHiddenRules[name] && g.FlattenGeneratedRepeatAux
@@ -4374,7 +4411,20 @@ func flattenHiddenChoiceAlts(g *Grammar, generatedHiddenRules map[string]bool) *
 		// For all-pass-through hidden rules, don't rewrite the rule itself;
 		// just inline its direct alternatives at reference sites. This
 		// approximates tree-sitter's transitive single-symbol closure.
+		//
+		// A rule with no precedence of its own that some production ends
+		// with stays a nonterminal everywhere. That production keeps the
+		// rule's own unary reduction, and an inlined copy elsewhere would
+		// share its state: the copy's shift of the next element would then
+		// compete with that reduction, which carries none of the caller's
+		// precedence or associativity, where tree-sitter reduces the rule
+		// first and lets the caller's associativity decide. A rule that
+		// carries precedence is still inlined, because inlining is how its
+		// precedence reaches the caller's productions.
 		if len(compound) == 0 {
+			if endingSymbols[name] && !ruleCarriesPrecedence(g.Rules[name]) {
+				continue
+			}
 			selfRef := false
 			for _, alt := range pt {
 				if ruleReferencesSym(alt, name) {
@@ -5127,6 +5177,55 @@ func ruleReferencesSym(r *Rule, name string) bool {
 // reference for compound alternatives while adding direct paths for cc=1 targets.
 func inlinePassthroughRefs(r *Rule, flattenMap map[string]*flattenInfo) *Rule {
 	return inlinePassthroughRefsCtx(r, flattenMap, false)
+}
+
+// symbolsEndingAProduction returns the names of the symbols some rule or extra
+// of g references as the last element of a production.
+func symbolsEndingAProduction(g *Grammar) map[string]bool {
+	ending := make(map[string]bool)
+	var visit func(r *Rule, endsProduction bool)
+	visit = func(r *Rule, endsProduction bool) {
+		if r == nil {
+			return
+		}
+		if r.Kind == RuleSymbol && endsProduction {
+			ending[r.Value] = true
+		}
+		for index, child := range r.Children {
+			visit(child, referenceEndsProduction(r, index, endsProduction))
+		}
+	}
+	for _, name := range g.RuleOrder {
+		visit(g.Rules[name], true)
+	}
+	for _, extra := range g.Extras {
+		visit(extra, true)
+	}
+	return ending
+}
+
+// ruleCarriesPrecedence reports whether r or any rule nested in it sets a
+// static or dynamic precedence.
+func ruleCarriesPrecedence(r *Rule) bool {
+	_, _, dynamicPrecedence, hasPrecedence := scanInnerPrec(r)
+	return hasPrecedence || dynamicPrecedence != 0
+}
+
+// referenceEndsProduction reports whether the child at index of r ends a
+// production: the last element of a sequence or the content of a choice,
+// optional, precedence, field or alias wrapper when r itself ends one, and
+// always a repeat's body, which ends the repeat helper's own production.
+func referenceEndsProduction(r *Rule, index int, parentEndsProduction bool) bool {
+	switch r.Kind {
+	case RuleSeq:
+		return parentEndsProduction && index == len(r.Children)-1
+	case RuleChoice, RuleOptional, RulePrec, RulePrecLeft, RulePrecRight, RulePrecDynamic, RuleField, RuleAlias:
+		return parentEndsProduction
+	case RuleRepeat, RuleRepeat1:
+		return true
+	default:
+		return false
+	}
 }
 
 // inlinePassthroughRefsCtx is inlinePassthroughRefs with ALIAS context tracking.

@@ -10,10 +10,10 @@ func TestNativeSelectedSnapshotContracts(t *testing.T) {
 		digest    string
 		byDefault bool
 	}{
-		{"9ad1f8d7d0f2b9aa32c61bd8295b56177caabb0ae2fb8dd4617559ee0f71fed4", true},
+		{"4456f9b11706face73bd511d6e80bbd2f0d468055065296db6f5334fa101d379", true},
 		{"214322327c9ee7dda29febf32e415f7ed9e00a90b7690d3c32522e393211b8da", true},
 		{"df63fc35604c4e4e7a484abde9eb2110b61640045601c23991723f323a48310d", true},
-		{"9ac37a326be7a4f4297efa6e43ba00317c5959e7b4909c9262043d408f284b30", false},
+		{"be6bd2f7c9d14160d8f74b29d63dc9a9294bc03ac1f1c4bde9522273f7c87b46", false},
 	} {
 		bytes, err := hex.DecodeString(tc.digest)
 		if err != nil {

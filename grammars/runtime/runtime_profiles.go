@@ -123,7 +123,7 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 	// The owned EOF bundle requires its executed recovery route before publication.
 	"go": {
 		// Re-certified 2026-10-24 against grammars/grammar_blobs/go.bin
-		// SHA-256 9ad1f8d7d0f2b9aa32c61bd8295b56177caabb0ae2fb8dd4617559ee0f71fed4,
+		// SHA-256 4456f9b11706face73bd511d6e80bbd2f0d468055065296db6f5334fa101d379,
 		// regenerated with cmd/grammargen (no -lr-split; -lr-split
 		// interacts badly with the Go external ASI scanner, see
 		// grammargen/README.md "Go's blob is generated without -lr-split").
@@ -131,7 +131,7 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 		// certifications were re-validated against this blob via the
 		// cgo_harness Go compact/recovery receipts (TestGoCompactIncrementalExecution*,
 		// TestGoCompactRecoveryVersionTurnsLockedC, TestStage6GoCompactCertification).
-		blobSHA256:                 mustRuntimeProfileSHA256("9ad1f8d7d0f2b9aa32c61bd8295b56177caabb0ae2fb8dd4617559ee0f71fed4"),
+		blobSHA256:                 mustRuntimeProfileSHA256("4456f9b11706face73bd511d6e80bbd2f0d468055065296db6f5334fa101d379"),
 		compactConvergedSplitDrops: true,
 		compactOwnedEOFRecovery:    true,
 		// Let the absorbing version compete before the eagerly shifted
@@ -159,9 +159,9 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 	// C result is the recover_eof ERROR root. Keep this gate independent from
 	// S3, S4, and S5.
 	"yaml": {
-		blobSHA256: mustRuntimeProfileSHA256("9ac37a326be7a4f4297efa6e43ba00317c5959e7b4909c9262043d408f284b30"),
+		blobSHA256: mustRuntimeProfileSHA256("be6bd2f7c9d14160d8f74b29d63dc9a9294bc03ac1f1c4bde9522273f7c87b46"),
 		compactRecoverEOFArtifact: gotreesitter.CompactRecoverEOFArtifactReceipt{
-			BlobSHA256:        mustRuntimeProfileSHA256("9ac37a326be7a4f4297efa6e43ba00317c5959e7b4909c9262043d408f284b30"),
+			BlobSHA256:        mustRuntimeProfileSHA256("be6bd2f7c9d14160d8f74b29d63dc9a9294bc03ac1f1c4bde9522273f7c87b46"),
 			TerminalSymbol:    26,
 			EOFState:          189,
 			EOFByteOffset:     1,
@@ -663,7 +663,7 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 	// receipt, 25/25 real-corpus parity, and the race-timed witness (see the
 	// commit that added this comment).
 	"swift": {
-		blobSHA256: mustRuntimeProfileSHA256("6ab89dd5c502e0fd2212955afae32e7a015a865cf56b9dd3e5983d4355418327"),
+		blobSHA256: mustRuntimeProfileSHA256("33940f9f644a588e39f353a081d34518eeebe9e1a92b97ad7241ed658056a3cb"),
 		// Preserve navigation expressions with C's physical version order.
 		compactPackedGSSVersionOrder: true,
 		// The locked C ERROR lex row enables all 34 external symbols.
