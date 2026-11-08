@@ -158,7 +158,7 @@ func TestSwiftUnsafeWitnessRemainsKnownCStructuralMismatch(t *testing.T) {
 func TestSwiftUnsafeMinimalWitnessMatchesLockedC(t *testing.T) {
 	const sourceText = "let x = unsafe bar()"
 	const wantSourceSHA256 = "b511d81ace2a89b05e8e5e0ca6730c10f2ac9295111dae013097c7c6be8861fe"
-	const swiftGoBlobSHA256 = "33fd9742ec9024832c89e8d4539f633036cfe28286a07a9fbff6f947b9de6b18"
+	const swiftGoBlobSHA256 = "6ab89dd5c502e0fd2212955afae32e7a015a865cf56b9dd3e5983d4355418327"
 	const wantGoDigest = "c64b894edc4a20e15f2b4127bad4223f698c8996dba091c06c34aa89386d3c68"
 	const wantCDigest = "c64b894edc4a20e15f2b4127bad4223f698c8996dba091c06c34aa89386d3c68"
 	const wantSwiftGrammarCommit = "00bbb0a2550f8bc0023a2a4992922d51ae045626"

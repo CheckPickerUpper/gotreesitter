@@ -25,6 +25,22 @@ func TestParitySwiftConditionFieldFamily(t *testing.T) {
 				"}\n",
 		},
 		{
+			name: "three-condition-list",
+			source: "func f() {\n" +
+				"    if a == 1, b == 2, c == 3 {\n" +
+				"        return\n" +
+				"    }\n" +
+				"}\n",
+		},
+		{
+			name: "three-condition-list-with-binding",
+			source: "func f() {\n" +
+				"    if a, let b = c, b {\n" +
+				"        return\n" +
+				"    }\n" +
+				"}\n",
+		},
+		{
 			name: "issue-591-else-if-binding",
 			source: "func f(_ i: Index, _ limit: Index) -> Index? {\n" +
 				"  if (limit < i) {\n" +
