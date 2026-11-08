@@ -174,6 +174,23 @@ var parityCRefState = struct {
 	err      error
 }{}
 
+// RemoveCOracleWorkspace deletes the temporary folder COracleLanguage clones
+// and compiles the C reference grammars in. The test binary's TestMain calls
+// it once, after every test has run; a later COracleLanguage call in the same
+// process would find the folder gone.
+func RemoveCOracleWorkspace() error {
+	parityCRefState.mu.Lock()
+	rootDir := parityCRefState.rootDir
+	parityCRefState.mu.Unlock()
+	if rootDir == "" {
+		return nil
+	}
+	if err := os.RemoveAll(rootDir); err != nil {
+		return fmt.Errorf("remove C oracle workspace %s: %w", rootDir, err)
+	}
+	return nil
+}
+
 // COracleLanguage loads a C reference language compiled from the pinned
 // grammars/languages.lock commit. An optional extra lock can add opt-in
 // grammars without changing the default grammar lock. It is the single

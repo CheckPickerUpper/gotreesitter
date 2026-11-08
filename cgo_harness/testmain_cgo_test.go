@@ -38,7 +38,14 @@ func TestMain(m *testing.M) {
 	// reason string (only substring checks and %s formatting into failure
 	// messages).
 	os.Setenv("GTS_ADMISSION_CENSUS", "1")
-	os.Exit(m.Run())
+	code := m.Run()
+	if err := RemoveCOracleWorkspace(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		if code == 0 {
+			code = 1
+		}
+	}
+	os.Exit(code)
 }
 
 func parityRunningInContainer() bool {
