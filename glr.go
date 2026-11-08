@@ -301,6 +301,11 @@ type glrMergeScratch struct {
 	// Diagnostics must never determine the incremental recovery proof.
 	policyPruned        bool
 	closedRecoveryMerge bool
+	// resumeFinishedTree holds the cheapest accepted tree while the condense
+	// tail resumes a paused version. Accepted versions sit outside the stack
+	// slice then, and C's better_version_exists still compares the finished
+	// tree first.
+	resumeFinishedTree cFinishedTreeCost
 	// lexicalReadSpan belongs to the active token source, never the pool.
 	lexicalReadSpan             *uint32
 	result                      []glrStack

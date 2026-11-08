@@ -3008,6 +3008,11 @@ func (p *Parser) cBetterVersionExists(stacks []glrStack, self int, isInError boo
 	if stacks[self].cRec != nil {
 		group = stacks[self].cRec.group
 	}
+	if p.mergeScratch != nil {
+		if finished := p.mergeScratch.resumeFinishedTree; finished.present && finished.cost <= cost {
+			return true
+		}
+	}
 	status := cErrorStatus{
 		cost:      cost,
 		isInError: isInError,
@@ -5672,6 +5677,8 @@ func (p *Parser) cCondenseAndResume(stacks []glrStack, source []byte, ts TokenSo
 	// regress an already-successful single-candidate resume.
 	needsRedispatch := false
 	hasUnpaused := false
+	var resumedCost uint32
+	resumedCostRead := false
 	for i := 0; i < len(stacks); i++ {
 		if reason := checkStop(); reason != ParseStopNone {
 			return stacks, false, tok, reason
@@ -5681,6 +5688,9 @@ func (p *Parser) cCondenseAndResume(stacks []glrStack, source []byte, ts TokenSo
 			continue
 		}
 		if !hasUnpaused {
+			// C's condense tail returns the resumed version's stored cost,
+			// read before recovery changes it.
+			resumedCost, resumedCostRead = p.cStackErrorCost(&stacks[i]), true
 			if p.glrTrace {
 				fmt.Printf("      -> C-RESUME stack=%d state=%d byte=%d\n", i, stacks[i].top().state, stacks[i].byteOffset)
 			}
@@ -5704,7 +5714,13 @@ func (p *Parser) cCondenseAndResume(stacks []glrStack, source []byte, ts TokenSo
 			if reason := checkStop(); reason != ParseStopNone {
 				return stacks, false, tok, reason
 			}
+			if p.mergeScratch != nil && len(acceptedStacks) > 0 {
+				p.mergeScratch.resumeFinishedTree = p.cCheapestFinishedTree(acceptedStacks)
+			}
 			outcome, redispatch, reason := p.cHandleError(&stacks, i, source, tok, nodeCount, arena, entryScratch, gssScratch, tmpEntries, trackChildErrors)
+			if p.mergeScratch != nil {
+				p.mergeScratch.resumeFinishedTree = cFinishedTreeCost{}
+			}
 			if reason != ParseStopNone {
 				return stacks, false, tok, reason
 			}
@@ -5733,11 +5749,71 @@ func (p *Parser) cCondenseAndResume(stacks []glrStack, source []byte, ts TokenSo
 		stacks = append(stacks[:i], stacks[i+1:]...)
 		i--
 	}
+	// ts_parser_parse stops when the finished tree, including one the resumed
+	// recovery accepted at end of file, costs less than that stored cost, and
+	// clears every version. A version C clears must not accept later and win
+	// the finished-tree tie.
+	if p.cFinishedTreeEndsParse(resumedCostRead, resumedCost, acceptedStacks, stacks) {
+		if p.glrTrace {
+			fmt.Printf("      -> C-FINISHED-TREE-ENDS-PARSE resumed-cost=%d\n", resumedCost)
+		}
+		if p.mergeScratch != nil {
+			p.mergeScratch.policyPruned = true
+		}
+		// Keep acceptance order: C's equal-cost tie goes to the later tree.
+		accepted := make([]glrStack, 0, len(acceptedStacks)+len(stacks))
+		accepted = append(accepted, acceptedStacks...)
+		for i := range stacks {
+			if stacks[i].accepted && !stacks[i].dead {
+				accepted = append(accepted, stacks[i])
+			}
+		}
+		if workCountInstrumentationEnabled {
+			workCountTopologyRetireMissingVersions(topologyBefore, accepted)
+		}
+		return accepted, false, tok, ParseStopNone
+	}
 	if workCountInstrumentationEnabled {
 		workCountTopologyRetireMissingVersions(topologyBefore, stacks)
 	}
 	stacks = append(stacks, acceptedStacks...)
 	return stacks, needsRedispatch, tok, ParseStopNone
+}
+
+// cFinishedTreeEndsParse reports whether C stops after this condense step: a
+// version was resumed and the finished tree costs less than that version's
+// stored cost. Error costs are read only once a version was resumed, so a
+// condense step that resumes nothing walks no accepted stack.
+func (p *Parser) cFinishedTreeEndsParse(resumed bool, resumedCost uint32, accepted, current []glrStack) bool {
+	if !resumed {
+		return false
+	}
+	finished := p.cCheapestFinishedTree(accepted, current)
+	return finished.present && finished.cost < resumedCost
+}
+
+// cFinishedTreeCost is the error cost of C's finished_tree, when one exists.
+type cFinishedTreeCost struct {
+	cost    uint32
+	present bool
+}
+
+// cCheapestFinishedTree returns the error cost C's finished_tree would carry:
+// the lowest cost among the accepted versions, since ts_parser__select_tree
+// keeps the cheaper tree first.
+func (p *Parser) cCheapestFinishedTree(stackSets ...[]glrStack) cFinishedTreeCost {
+	var finished cFinishedTreeCost
+	for _, stacks := range stackSets {
+		for i := range stacks {
+			if !stacks[i].accepted || stacks[i].dead {
+				continue
+			}
+			if cost := p.cStackResultErrorCost(&stacks[i]); !finished.present || cost < finished.cost {
+				finished = cFinishedTreeCost{cost: cost, present: true}
+			}
+		}
+	}
+	return finished
 }
 
 func (p *Parser) traceCCondenseDrop(reason string, dropIndex, keepIndex int, drop, keep glrStack, dropStatus, keepStatus cErrorStatus) {
