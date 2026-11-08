@@ -794,17 +794,14 @@ func (ctx *lrContext) computeLALRLookaheads() {
 	}
 
 	ctx.materializeLALRItemSets(reduceLookaheads)
-	// Retain DeRemer/Pennello data for LR(1) splitting when provenance is
-	// tracked. The splitter uses lookbacks (with lastPredState) and followSets
-	// to partition reduce lookaheads per predecessor of a candidate state.
-	if ctx.trackProvenance {
-		ctx.lalrLookbacks = lookbacks
-		ctx.lalrFollowSets = followSets
-		ctx.lalrNTTransIndex = ntTransIndex
-	} else {
-		lookbacks = nil
-		followSets = nil
-	}
+	// Retain DeRemer/Pennello data: finding the conflicts whose lookahead only
+	// some lanes contribute (lr_lane_dependent_conflicts.go) and the LR(1)
+	// splitter both partition reduce lookaheads by the nonterminal transition
+	// that contributed them. buildLRTablesInternal releases it afterwards
+	// unless provenance is tracked.
+	ctx.lalrLookbacks = lookbacks
+	ctx.lalrFollowSets = followSets
+	ctx.lalrNTTransIndex = ntTransIndex
 	reduceLookaheads = nil
 	ctx.maybeGCForLargeLALR()
 	ctx.pruneConditionalTypeQmarkLookaheads()

@@ -860,7 +860,7 @@ func resolveConflictsWithDiagAndTrace(ctx context.Context, tables *LRTables, ng 
 				diag.Kind = ReduceReduce
 			}
 
-			resolved, err := resolveActionConflict(sym, acts, ng)
+			resolved, err := tables.resolveActionCell(state, sym, acts, ng)
 			if err != nil {
 				finishActions()
 				return diags, stats, fmt.Errorf("state %d, symbol %d: %w", state, sym, err)

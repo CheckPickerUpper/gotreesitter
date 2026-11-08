@@ -332,6 +332,11 @@ type LRTables struct {
 	// CompactCoreKeys are C-compatible state cores retained for optional
 	// post-resolution parser-state minimization.
 	CompactCoreKeys []string
+	// LaneDependentConflicts are the action cells conflict resolution keeps
+	// every dropped action in, because a merged LALR state took the cell's
+	// token from only some of the lanes of the item resolution keeps
+	// (lr_lane_dependent_conflicts.go).
+	LaneDependentConflicts map[laneDependentConflictCell]bool
 }
 
 // buildLRTables constructs LR(1) parse tables from a normalized grammar.
@@ -750,6 +755,12 @@ func buildLRTablesInternal(bgCtx context.Context, ng *NormalizedGrammar, trackPr
 	}
 	propagateEntryShiftMetadata(tables, itemSets, ctx, ng)
 	augmentSingleReduceLookaheadsForNonterminalExtraStarts(tables, ng, ctx)
+	tables.LaneDependentConflicts = ctx.findLaneDependentConflicts(tables)
+	if !trackProvenance {
+		ctx.lalrLookbacks = nil
+		ctx.lalrFollowSets = nil
+		ctx.lalrNTTransIndex = nil
+	}
 
 	return tables, ctx, nil
 }
@@ -3338,7 +3349,7 @@ func resolveConflictsWithTrace(ctx context.Context, tables *LRTables, ng *Normal
 				stats.MaxActionsPerConflict = len(acts)
 			}
 
-			resolved, err := resolveActionConflict(sym, acts, ng)
+			resolved, err := tables.resolveActionCell(state, sym, acts, ng)
 			if err != nil {
 				finishActions()
 				return stats, fmt.Errorf("state %d, symbol %d: %w", state, sym, err)
@@ -4865,6 +4876,14 @@ func preferredLoweredRepeatContinuationShift(lookaheadSym int, shifts, reduces [
 		return lrAction{}, false
 	}
 	if shiftHasExactLHSContributor(shift, prod.LHS) {
+		return lrAction{}, false
+	}
+	// A shift whose items carry the reduce's own precedence and an
+	// associativity, as a repeat helper lowered from under the same
+	// prec.left or prec.right does, is settled by that associativity, as
+	// tree-sitter settles it. This preference is only for continuations that
+	// carry none.
+	if shiftMeta := shiftMetadataForReduce(shift, prod.LHS, ng, cache); shiftMeta.assoc != AssocNone && shiftMeta.prec == prod.Prec {
 		return lrAction{}, false
 	}
 	lookaheadTargets := map[int]bool{lookaheadSym: true}

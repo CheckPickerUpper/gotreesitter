@@ -3,7 +3,7 @@ package grammarruntime
 import "testing"
 
 func TestGoMissingTurnRangeExclusionRequiresCurrentExactArtifact(t *testing.T) {
-	current := mustRuntimeProfileSHA256("9ad1f8d7d0f2b9aa32c61bd8295b56177caabb0ae2fb8dd4617559ee0f71fed4")
+	current := mustRuntimeProfileSHA256("4456f9b11706face73bd511d6e80bbd2f0d468055065296db6f5334fa101d379")
 	previous := mustRuntimeProfileSHA256("214322327c9ee7dda29febf32e415f7ed9e00a90b7690d3c32522e393211b8da")
 	scanner := GoExternalScanner{}
 	if !scanner.ExcludesMissingVersionTurnsForIncludedRanges(current) {

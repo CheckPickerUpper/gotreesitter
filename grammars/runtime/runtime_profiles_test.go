@@ -84,7 +84,7 @@ func TestYAMLProfileCertifiesOnlyExactRecoverEOFArtifact(t *testing.T) {
 		t.Fatal("the YAML profile did not attach recover_eof certification")
 	}
 	wantArtifact := gotreesitter.CompactRecoverEOFArtifactReceipt{
-		BlobSHA256:        mustRuntimeProfileSHA256("9ac37a326be7a4f4297efa6e43ba00317c5959e7b4909c9262043d408f284b30"),
+		BlobSHA256:        mustRuntimeProfileSHA256("be6bd2f7c9d14160d8f74b29d63dc9a9294bc03ac1f1c4bde9522273f7c87b46"),
 		TerminalSymbol:    26,
 		EOFState:          189,
 		EOFByteOffset:     1,

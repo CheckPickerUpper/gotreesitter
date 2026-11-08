@@ -427,11 +427,13 @@ func TestFlattenHiddenTopLevelRepeat1Passthrough(t *testing.T) {
 	}
 }
 
+// TestInlineHiddenAllPassthroughChoice expects a hidden all-pass-through rule referenced before
+// the end of a production to be inlined there beside the original reference.
 func TestInlineHiddenAllPassthroughChoice(t *testing.T) {
 	g := &Grammar{
 		Name: "test_inline_hidden_passthrough_only",
 		Rules: map[string]*Rule{
-			"document": Seq(Sym("_value")),
+			"document": Seq(Sym("_value"), Str(";")),
 			"_value":   Choice(Sym("string"), Sym("number")),
 			"string":   Pat(`"[^\"]*"`),
 			"number":   Pat(`[0-9]+`),
@@ -478,6 +480,56 @@ func TestInlineHiddenAllPassthroughChoice(t *testing.T) {
 	}
 	if !hasValue {
 		t.Fatal("document should retain original hidden reference alongside direct passthrough refs")
+	}
+}
+
+// TestHiddenAllPassthroughChoiceEndingAProduction normalizes a production that ends with a
+// hidden all-pass-through rule and expects the rule to stay a nonterminal there unless it
+// carries precedence, which only inlining carries into the caller's productions.
+func TestHiddenAllPassthroughChoiceEndingAProduction(t *testing.T) {
+	cases := []struct {
+		name        string
+		value       *Rule
+		wantInlined bool
+	}{
+		{name: "without precedence", value: Choice(Sym("string"), Sym("number")), wantInlined: false},
+		{name: "with precedence", value: Prec(1, Choice(Sym("string"), Sym("number"))), wantInlined: true},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			g := &Grammar{
+				Name: "test_hidden_passthrough_ending_production",
+				Rules: map[string]*Rule{
+					"document": Seq(Str("let"), Sym("_value")),
+					"_value":   testCase.value,
+					"string":   Pat(`"[^\"]*"`),
+					"number":   Pat(`[0-9]+`),
+				},
+				RuleOrder: []string{"document", "_value", "string", "number"},
+			}
+			normalized, err := Normalize(g)
+			if err != nil {
+				t.Fatalf("normalize: %v", err)
+			}
+			symbolIDs := make(map[string]int)
+			for index, info := range normalized.Symbols {
+				symbolIDs[info.Name] = index
+			}
+			inlined := false
+			for _, production := range normalized.Productions {
+				if production.LHS != symbolIDs["document"] {
+					continue
+				}
+				for _, symbol := range production.RHS {
+					if symbol == symbolIDs["string"] || symbol == symbolIDs["number"] {
+						inlined = true
+					}
+				}
+			}
+			if inlined != testCase.wantInlined {
+				t.Fatalf("document references string or number directly = %v, want %v", inlined, testCase.wantInlined)
+			}
+		})
 	}
 }
 

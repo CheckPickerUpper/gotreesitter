@@ -4754,7 +4754,7 @@ func missingTurnRangeIdentity(t *testing.T, text string) [32]byte {
 }
 
 func TestMissingTurnRangeExclusionPreservesModeAndArtifactBoundaries(t *testing.T) {
-	current := missingTurnRangeIdentity(t, "9ad1f8d7d0f2b9aa32c61bd8295b56177caabb0ae2fb8dd4617559ee0f71fed4")
+	current := missingTurnRangeIdentity(t, "4456f9b11706face73bd511d6e80bbd2f0d468055065296db6f5334fa101d379")
 	previous := missingTurnRangeIdentity(t, "214322327c9ee7dda29febf32e415f7ed9e00a90b7690d3c32522e393211b8da")
 	scanner := &missingTurnRangeExclusionScanner{deny: current}
 	lang := &Language{RecoveryMissingVersionTurnsCertified: true, ExternalScanner: scanner, grammarBlobSHA256: current, grammarBlobSHA256Valid: true}
@@ -4800,7 +4800,7 @@ func TestMissingTurnRangeExclusionPreservesModeAndArtifactBoundaries(t *testing.
 
 func TestMissingTurnRangeExclusionPreservesNativeAndResyncDispatch(t *testing.T) {
 	p := cRecoveryElectionTestParser()
-	identity := missingTurnRangeIdentity(t, "9ad1f8d7d0f2b9aa32c61bd8295b56177caabb0ae2fb8dd4617559ee0f71fed4")
+	identity := missingTurnRangeIdentity(t, "4456f9b11706face73bd511d6e80bbd2f0d468055065296db6f5334fa101d379")
 	p.language.RecoveryMissingVersionTurnsCertified = true
 	p.language.grammarBlobSHA256, p.language.grammarBlobSHA256Valid = identity, true
 	p.language.ExternalScanner = &missingTurnRangeExclusionScanner{deny: identity}

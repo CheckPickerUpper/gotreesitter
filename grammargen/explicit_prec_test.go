@@ -223,6 +223,9 @@ func TestResolveReduceReduceExplicitZeroBeatsImplicitZero(t *testing.T) {
 	}
 }
 
+// TestFlattenRuleSeqBlankChoiceDoesNotInheritExplicitZeroPrecedence flattens
+// prec.right(0, seq(a, optional(x))) and expects the alternative without x to keep the
+// wrapper's associativity but not the explicit zero-precedence mark.
 func TestFlattenRuleSeqBlankChoiceDoesNotInheritExplicitZeroPrecedence(t *testing.T) {
 	st := newSymbolTable()
 	lhs := st.addSymbol("start", SymbolInfo{Name: "start", Kind: SymbolNonterminal})
@@ -245,8 +248,8 @@ func TestFlattenRuleSeqBlankChoiceDoesNotInheritExplicitZeroPrecedence(t *testin
 			}
 		case 1:
 			sawBlankArm = true
-			if p.HasExplicitPrec || p.Assoc != AssocNone || p.Prec != 0 {
-				t.Fatalf("blank-arm alternative inherited explicit zero precedence unexpectedly: %+v", p)
+			if p.HasExplicitPrec || p.Assoc != AssocRight || p.Prec != 0 {
+				t.Fatalf("blank-arm alternative inherited explicit zero precedence or lost the wrapper's associativity: %+v", p)
 			}
 		default:
 			t.Fatalf("unexpected production shape: %+v", p)
@@ -298,7 +301,11 @@ func TestFlattenRuleSeqTrailingAutomaticSemicolonKeepsExplicitZeroPrecedence(t *
 	}
 }
 
-func TestFlattenRuleChoiceNonterminalWrapperDoesNotInheritExplicitZeroAssoc(t *testing.T) {
+// TestFlattenRuleChoiceNonterminalWrapperKeepsAssocWithoutExplicitZeroPrecedence flattens
+// prec.left(0, choice(terminal, nonterminal)) and expects the nonterminal pass-through to keep
+// the wrapper's associativity, as tree-sitter gives it to every step, without the explicit
+// zero-precedence mark the terminal alternative carries.
+func TestFlattenRuleChoiceNonterminalWrapperKeepsAssocWithoutExplicitZeroPrecedence(t *testing.T) {
 	st := newSymbolTable()
 	lhs := st.addSymbol("_string", SymbolInfo{Name: "_string", Kind: SymbolNonterminal})
 	st.addSymbol("string_literal", SymbolInfo{Name: "string_literal", Kind: SymbolTerminal})
@@ -324,8 +331,8 @@ func TestFlattenRuleChoiceNonterminalWrapperDoesNotInheritExplicitZeroAssoc(t *t
 			}
 		case "concatenated_string":
 			sawNonterminal = true
-			if p.HasExplicitPrec || p.Assoc != AssocNone {
-				t.Fatalf("nonterminal wrapper inherited explicit zero precedence unexpectedly: %+v", p)
+			if p.HasExplicitPrec || p.Assoc != AssocLeft {
+				t.Fatalf("nonterminal wrapper inherited explicit zero precedence or lost the wrapper's associativity: %+v", p)
 			}
 		default:
 			t.Fatalf("unexpected rhs %q in production %+v", rhsName, p)
