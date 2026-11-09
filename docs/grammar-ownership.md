@@ -264,8 +264,7 @@ go run ./cmd/grammargen -bin grammars/grammar_blobs/swift.bin swift
 
 Do not pass `-lr-split` for Swift: it regresses the real-corpus board on the
 current grammar (see `grammargen/blob_reproducibility_test.go`, which pins
-`lrSplit: false` for swift). The shipped `swift.bin` was regenerated on
-2026-09-20 with that plain recipe.
+`lrSplit: false` for swift). The shipped `swift.bin` is regenerated with that plain recipe.
 
 Run the focused evidence with:
 
@@ -279,6 +278,22 @@ bash cgo_harness/docker/run_single_grammar_parity.sh swift
 decode to the same `*gotreesitter.Language` as the shipped blob. The Docker
 suite compares tree shape, spans, fields, and node names against the
 tree-sitter C parser.
+
+### Owned divergence: the empty tuple
+
+Upstream tree-sitter-swift at `00bbb0a2` reads `()` as a `tuple_expression`
+holding a MISSING `!` in every context the 18 inputs exercise. This grammar accepts `()` at the
+start of a local statement (a statement inside a block, such as a function
+body, closure, loop or `case` body) as a `tuple_expression` with no named
+children, so a `()` statement on its own line parses without an error. Top-level
+statements are unchanged. Mid-expression `()`, such as `let a = ()` and `f(())`,
+parses as the base grammar parses it. The C parser therefore differs from this
+grammar at statement-position `()`, by design.
+
+The same change to upstream's `grammar.js`, a hidden `_empty_tuple` rule aliased
+as `tuple_expression` in `_local_statement`, generates with no conflict and
+leaves the C parse of every other named node unchanged across the 18 Swift
+inputs it was checked against.
 
 ## Change and release gate
 

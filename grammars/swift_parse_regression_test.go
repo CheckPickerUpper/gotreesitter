@@ -1292,3 +1292,83 @@ func TestSwiftCommentWithCommaDoesNotSuppressImplicitSemi(t *testing.T) {
 		})
 	}
 }
+
+// swiftNIOEmptyTupleFixture is swift-nio's Package.swift lines 640-654. Its
+// `()` statements on lines 650 and 652 are the empty tuples that upstream
+// tree-sitter-swift parses with a MISSING `!`.
+const swiftNIOEmptyTupleFixture = `
+// ---    STANDARD CROSS-REPO SETTINGS DO NOT EDIT   --- //
+for target in package.targets {
+    switch target.type {
+    case .regular, .test, .executable:
+        var settings = target.swiftSettings ?? []
+        // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0444-member-import-visibility.md
+        settings.append(.enableUpcomingFeature("MemberImportVisibility"))
+        target.swiftSettings = settings
+    case .macro, .plugin, .system, .binary:
+        ()  // not applicable
+    @unknown default:
+        ()  // we don't know what to do here, do nothing
+    }
+}
+`
+
+// TestSwiftEmptyTupleParses guards the empty tuple `()`. Upstream
+// tree-sitter-swift at 00bbb0a2 parses each `()` only with a MISSING `!`
+// inside its tuple_expression, so swift-nio's Package.swift was refused as
+// unreadable. Each `()` here must parse as a tuple_expression with no named
+// child, and no input may hold an ERROR or MISSING node.
+func TestSwiftEmptyTupleParses(t *testing.T) {
+	lang := SwiftLanguage()
+	cases := []struct {
+		name        string
+		src         string
+		emptyTuples int
+	}{
+		{
+			name:        "switch case and default",
+			src:         "switch x {\n    case .a: ()  // c\n    default: ()\n}\n",
+			emptyTuples: 2,
+		},
+		{name: "non-empty tuple still parses", src: "let t = (1, 2)\n", emptyTuples: 0},
+		{name: "swift-nio Package.swift lines 640-654", src: swiftNIOEmptyTupleFixture, emptyTuples: 2},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			parser := gotreesitter.NewParser(lang)
+			tree, err := parser.Parse([]byte(tc.src))
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			defer tree.Release()
+			root := tree.RootNode()
+			if root.HasErrorOrMissing() {
+				t.Fatalf("has ERROR or MISSING node: %s", root.SExpr(lang))
+			}
+			swiftRequireEmptyTuples(t, lang, []byte(tc.src), root, tc.emptyTuples)
+		})
+	}
+}
+
+// swiftRequireEmptyTuples fails unless exactly want tuple_expression nodes
+// span `()` in the tree, and each of them holds no named child.
+func swiftRequireEmptyTuples(t *testing.T, lang *gotreesitter.Language, src []byte, root *gotreesitter.Node, want int) {
+	t.Helper()
+	found := 0
+	var walk func(n *gotreesitter.Node)
+	walk = func(n *gotreesitter.Node) {
+		if n.Type(lang) == "tuple_expression" && string(src[n.StartByte():n.EndByte()]) == "()" {
+			found++
+			if n.NamedChildCount() != 0 {
+				t.Fatalf("empty tuple_expression has %d named children; tree: %s", n.NamedChildCount(), root.SExpr(lang))
+			}
+		}
+		for i := 0; i < n.ChildCount(); i++ {
+			walk(n.Child(i))
+		}
+	}
+	walk(root)
+	if found != want {
+		t.Fatalf("empty tuple_expression count = %d, want %d; tree: %s", found, want, root.SExpr(lang))
+	}
+}

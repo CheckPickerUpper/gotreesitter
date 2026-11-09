@@ -658,12 +658,11 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 	// needs the opposite: without the skip it stays unbounded under the race
 	// detector (825s, over the CI shard timeout, versus 273s with the skip).
 	// The size gate keeps both: small sources always take the full ladder,
-	// and only large sources skip it. Recertified on blob 33fd9742
-	// (tree-sitter-swift 00bbb0a2, 2026-09-20) with the B16 telemetry
-	// receipt, 25/25 real-corpus parity, and the race-timed witness (see the
-	// commit that added this comment).
+	// and only large sources skip it. The B16 telemetry receipt, 25/25
+	// real-corpus parity and race-timed witness were measured on blob 33fd9742
+	// (tree-sitter-swift 00bbb0a2, 2026-09-20), not on the blob pinned below.
 	"swift": {
-		blobSHA256: mustRuntimeProfileSHA256("33940f9f644a588e39f353a081d34518eeebe9e1a92b97ad7241ed658056a3cb"),
+		blobSHA256: mustRuntimeProfileSHA256("5ed5c5cee80142a96d8d97eee24fe95669c02208a973766725a8f30c18da5c2a"),
 		// Preserve navigation expressions with C's physical version order.
 		compactPackedGSSVersionOrder: true,
 		// The locked C ERROR lex row enables all 34 external symbols.

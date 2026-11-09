@@ -2302,9 +2302,21 @@ func SwiftGrammar() *Grammar {
 			),
 		))
 
+	// A hidden rule, so the alias below makes one node for (). Aliasing the two
+	// tokens directly makes one node per token.
+	g.Define("_empty_tuple",
+		Seq(Str("("), Str(")")))
+
 	g.Define("_local_statement",
 		Choice(
 			Sym("_expression"),
+			// () is an empty tuple only where a local statement can start. Upstream reads
+			// it as a missing "!"; mid-expression () parses as the base grammar parses it.
+			Alias(
+				Sym("_empty_tuple"),
+				"tuple_expression",
+				true,
+			),
 			Sym("_local_declaration"),
 			Sym("_labeled_statement"),
 			Sym("control_transfer_statement"),
