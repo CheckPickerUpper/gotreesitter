@@ -1,16 +1,14 @@
 package gotreesitter
 
 // RepairNoLookaheadLexModes marks parser states as no-lookahead when they only
-// need EOF-triggered reductions plus external/trivia handling. Tree-sitter's C
-// runtime uses these states to reduce before lexing the next real token.
+// need EOF-triggered reductions plus trivia handling. Tree-sitter's C runtime
+// uses these states to reduce before lexing the next real token. A
+// no-lookahead state reduces by its EOF actions without lexing, so a state is
+// marked only when every other token, internal or external, is trivia there:
+// a real action on an external token needs the external scanner to run.
 func RepairNoLookaheadLexModes(lang *Language) {
 	if lang == nil || len(lang.LexModes) == 0 || len(lang.ParseActions) == 0 {
 		return
-	}
-
-	externalSet := make(map[Symbol]struct{}, len(lang.ExternalSymbols))
-	for _, sym := range lang.ExternalSymbols {
-		externalSet[sym] = struct{}{}
 	}
 
 	for state := 0; state < len(lang.LexModes) && state < int(lang.StateCount); state++ {
@@ -40,9 +38,6 @@ func RepairNoLookaheadLexModes(lang *Language) {
 
 		needsRealLookahead := false
 		for sym := Symbol(1); uint32(sym) < lang.TokenCount; sym++ {
-			if _, ok := externalSet[sym]; ok {
-				continue
-			}
 			idx := lookupRepairActionIndex(lang, StateID(state), sym)
 			if idx == 0 || int(idx) >= len(lang.ParseActions) {
 				continue
