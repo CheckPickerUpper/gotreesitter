@@ -2712,9 +2712,9 @@ svelte -- https://github.com/tree-sitter-grammars/tree-sitter-svelte @ ae5199db4
   Copyright (c) 2024 Amaan Qureshi <amaanq12@gmail.com>
   License file: https://github.com/tree-sitter-grammars/tree-sitter-svelte/blob/ae5199db47757f785e43a14b332118a5474de1a2/LICENSE
 
-swift -- https://github.com/alex-pinkus/tree-sitter-swift @ 00bbb0a2550f
+swift -- https://github.com/alex-pinkus/tree-sitter-swift @ 9e3b87f66f1f
   Copyright (c) 2021 alex-pinkus
-  License file: https://github.com/alex-pinkus/tree-sitter-swift/blob/00bbb0a2550f8bc0023a2a4992922d51ae045626/LICENSE
+  License file: https://github.com/alex-pinkus/tree-sitter-swift/blob/9e3b87f66f1fd2f3b931376fd3723ab788e337c3/LICENSE
 
 tablegen -- https://github.com/amaanq/tree-sitter-tablegen @ b1170880c613
   Copyright (c) 2023 Sebastian Neubauer <flakebi@t-online.de>, Amaan Qureshi <amaanq12@gmail.com>

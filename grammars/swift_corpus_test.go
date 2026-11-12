@@ -75,16 +75,11 @@ var swiftCorpusExpectations = map[string]swiftCorpusExpectation{
 		issue: "#575",
 	},
 	"stdlib_CollectionAlgorithms.swift": {
-		status: swiftCorpusKnownFailing,
-		// Same root cause as stdlib_FloatingPointToString.swift: the
-		// focused minimal witness now matches locked C, but this full file
-		// still reports an error.
-		// `unsafe` expression-prefix keyword. Verified by bisection: the
-		// file parses clean through the `_halfStablePartition` function
-		// (byte 13232) and only starts failing once `partition(by:)`
-		// appears, which contains `try unsafe
-		// withContiguousMutableStorageIfAvailable { ... }`.
-		issue: "#576",
+		status: swiftCorpusClean,
+		// Ratcheted by the tree-sitter-swift 9e3b87f66f1f bump: upstream
+		// 187fd4d added the `unsafe` expression prefix (SE-0458), so
+		// `try unsafe withContiguousMutableStorageIfAvailable { ... }` in
+		// `partition(by:)` parses, and locked C reads the file clean too.
 	},
 	"stdlib_FloatingPointToString.swift": {
 		status: swiftCorpusKnownFailing,

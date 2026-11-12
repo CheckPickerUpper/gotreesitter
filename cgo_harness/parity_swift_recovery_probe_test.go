@@ -112,8 +112,10 @@ func TestSwiftUnsafeWitnessRemainsKnownCStructuralMismatch(t *testing.T) {
 
 	goRoot := goTree.RootNode()
 	cRoot := cTree.RootNode()
-	if !goRoot.HasError() || !cRoot.HasError() {
-		t.Fatalf("Swift unsafe witness HasError() Go=%v C=%v, want true/true", goRoot.HasError(), cRoot.HasError())
+	// Locked C reads the file clean since tree-sitter-swift 187fd4d added the
+	// `unsafe` expression prefix; the Go default route still reports an error.
+	if !goRoot.HasError() || cRoot.HasError() {
+		t.Fatalf("Swift unsafe witness HasError() Go=%v C=%v, want true/false", goRoot.HasError(), cRoot.HasError())
 	}
 	goInspection, err := benchfixtures.InspectGoTree(goRoot, goLang)
 	if err != nil {
@@ -133,14 +135,15 @@ func TestSwiftUnsafeWitnessRemainsKnownCStructuralMismatch(t *testing.T) {
 	// pinned digest for the same file; see that test for the scanner and
 	// C version-order fixes that reduce the known locked-C leaf gap.
 	// The C-correct scanner-padding rule from c99e9085c changes the Go
-	// recovery tree. The C oracle and the known root-shape gap stay fixed;
-	// TestSwiftDirectiveNewlinesMatchLockedC also covers the clean comment
-	// boundary that regresses if that progress rule is removed.
-	const wantGoDigest = "3a7182b98102fd1a8d1606cc138bc4bd25e7f636c747e83875095b56615dab1c"
+	// recovery tree; TestSwiftDirectiveNewlinesMatchLockedC also covers the
+	// clean comment boundary that regresses if that progress rule is removed.
+	// Since tree-sitter-swift 187fd4d (SE-0458) locked C reads `unsafe` and
+	// the whole file clean, so the known gap is Go's error at the root.
+	const wantGoDigest = "e393b00abea2da831e8bbb4e47e9c387ffbaf239cd15624425172fdd8c873954"
 	if goInspection.SHA256 != wantGoDigest {
 		t.Fatalf("Go Swift witness digest = %s, want %s", goInspection.SHA256, wantGoDigest)
 	}
-	const wantCDigest = "1afaa887219c1e00d9deb3735f91c7a0d12cda7d57457a4853c081d48d9bec81"
+	const wantCDigest = "bf9f347abdb59a49439c6701fa136d21bc16ceb635b6980e7777505a1fec4e73"
 	if cDigest != wantCDigest {
 		t.Fatalf("locked C Swift witness digest = %s, want %s", cDigest, wantCDigest)
 	}
@@ -148,8 +151,8 @@ func TestSwiftUnsafeWitnessRemainsKnownCStructuralMismatch(t *testing.T) {
 		t.Fatal("Swift unsafe witness reached C structural parity; ratchet the known-mismatch test")
 	}
 	if diff := FirstDivergenceDumpV1(goRoot, goLang, cRoot); diff == nil ||
-		diff.Path != "/source_file" || diff.Category != "shape" ||
-		diff.GoValue != "children=1" || diff.CValue != "children=353" {
+		diff.Path != "/source_file" || diff.Category != "error" ||
+		diff.GoValue != "true" || diff.CValue != "false" {
 		t.Fatalf("Swift unsafe witness known root-shape gap changed: %+v", diff)
 	}
 	t.Logf("Swift unsafe witness known C mismatch: Go=%s C=%s", goInspection.SHA256, cDigest)
@@ -158,14 +161,14 @@ func TestSwiftUnsafeWitnessRemainsKnownCStructuralMismatch(t *testing.T) {
 func TestSwiftUnsafeMinimalWitnessMatchesLockedC(t *testing.T) {
 	const sourceText = "let x = unsafe bar()"
 	const wantSourceSHA256 = "b511d81ace2a89b05e8e5e0ca6730c10f2ac9295111dae013097c7c6be8861fe"
-	const swiftGoBlobSHA256 = "f14367493729faa6fa183257f64c2523dbd268772cbae5bb4d168d769a35c350"
-	const wantGoDigest = "c64b894edc4a20e15f2b4127bad4223f698c8996dba091c06c34aa89386d3c68"
-	const wantCDigest = "c64b894edc4a20e15f2b4127bad4223f698c8996dba091c06c34aa89386d3c68"
-	const wantSwiftGrammarCommit = "00bbb0a2550f8bc0023a2a4992922d51ae045626"
+	const swiftGoBlobSHA256 = "b89e04ec822721357134643ec7cfb1caf1089579df83198051648dd0e39c785d"
+	const wantGoDigest = "c1eb508278b6d00286b0f496ee1304d5c2bec2e72de030d96f920e55de754bca"
+	const wantCDigest = "c1eb508278b6d00286b0f496ee1304d5c2bec2e72de030d96f920e55de754bca"
+	const wantSwiftGrammarCommit = "9e3b87f66f1fd2f3b931376fd3723ab788e337c3"
 	const wantCRuntimeVersion = "0.27.1"
 	const wantCRuntimeCommit = "10eb5ac119eec9cb4267a8e035066473983f5f3a"
 	const wantCGrammarRepo = "https://github.com/alex-pinkus/tree-sitter-swift"
-	const wantCArtifactSHA256 = "d063a1ee8f82ee99c7a5ff8121ab0139760cc0d8e1a13ce48d1821872a6f730c"
+	const wantCArtifactSHA256 = "84af5714ab27ac485c96b8929c4ef6f06061a0b82c52fef261ebfbe708c5a660"
 	source := []byte(sourceText)
 	sourceDigest := sha256.Sum256(source)
 	if got := fmt.Sprintf("%x", sourceDigest); got != wantSourceSHA256 {
@@ -223,8 +226,10 @@ func TestSwiftUnsafeMinimalWitnessMatchesLockedC(t *testing.T) {
 	}
 	defer cTree.Close()
 	cRoot := cTree.RootNode()
-	if !goRoot.HasError() || !cRoot.HasError() {
-		t.Fatalf("Swift unsafe minimal witness HasError() Go=%v C=%v, want true/true", goRoot.HasError(), cRoot.HasError())
+	// tree-sitter-swift 187fd4d added the `unsafe` expression prefix
+	// (SE-0458), so both parsers read the witness clean.
+	if goRoot.HasError() || cRoot.HasError() {
+		t.Fatalf("Swift unsafe minimal witness HasError() Go=%v C=%v, want false/false", goRoot.HasError(), cRoot.HasError())
 	}
 
 	goInspection, err := benchfixtures.InspectGoTree(goRoot, goLang)
@@ -248,7 +253,7 @@ func TestSwiftUnsafeMinimalWitnessMatchesLockedC(t *testing.T) {
 }
 
 func TestSwiftUnsafeMinimalWitnessMatchesLockedCAfterPooledRecoveryControl(t *testing.T) {
-	const wantMinimalDigest = "c64b894edc4a20e15f2b4127bad4223f698c8996dba091c06c34aa89386d3c68"
+	const wantMinimalDigest = "c1eb508278b6d00286b0f496ee1304d5c2bec2e72de030d96f920e55de754bca"
 	control := []byte("func f(n: Int) -> Int {\n" +
 		"  var total = 0\n" +
 		"  for i in 0..<n { total += i }\n" +
@@ -301,8 +306,8 @@ func TestSwiftUnsafeMinimalWitnessMatchesLockedCAfterPooledRecoveryControl(t *te
 }
 
 func TestSwiftUnsafeLargeWitnessKeepsDigestAfterPooledRecoveryControl(t *testing.T) {
-	const wantGoDigest = "3a7182b98102fd1a8d1606cc138bc4bd25e7f636c747e83875095b56615dab1c"
-	const wantCDigest = "1afaa887219c1e00d9deb3735f91c7a0d12cda7d57457a4853c081d48d9bec81"
+	const wantGoDigest = "e393b00abea2da831e8bbb4e47e9c387ffbaf239cd15624425172fdd8c873954"
+	const wantCDigest = "bf9f347abdb59a49439c6701fa136d21bc16ceb635b6980e7777505a1fec4e73"
 	control := []byte("func f(n: Int) -> Int {\n" +
 		"  var total = 0\n" +
 		"  for i in 0..<n { total += i }\n" +

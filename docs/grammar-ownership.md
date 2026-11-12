@@ -249,7 +249,7 @@ Swift is Tier 1 and Own. Its canonical grammar source is
 [swift_grammar.go](../grammargen/swift_grammar.go). Its canonical external
 scanner is [swift_scanner.go](../grammars/runtime/swift_scanner.go).
 
-The pinned upstream commit is `00bbb0a2550f8bc0023a2a4992922d51ae045626` of
+The pinned upstream commit is `9e3b87f66f1fd2f3b931376fd3723ab788e337c3` of
 [alex-pinkus/tree-sitter-swift](https://github.com/alex-pinkus/tree-sitter-swift),
 MIT license, matching `grammars/languages.lock`'s `swift` entry.
 `tree-sitter/tree-sitter-swift` is the abandoned upstream origin.
@@ -281,8 +281,10 @@ tree-sitter C parser.
 
 ### Owned divergence: the empty tuple
 
-Upstream tree-sitter-swift at `00bbb0a2` reads `()` as a `tuple_expression`
-holding a MISSING `!` in every context the 18 inputs exercise. This grammar accepts `()` at the
+Upstream tree-sitter-swift reads `()` as a `tuple_expression` holding a
+MISSING `!`: at `00bbb0a2` in every context the 18 inputs exercise, and at the
+pinned `9e3b87f6` in a `case` body, a function body and `let a = ()`. This
+grammar accepts `()` at the
 start of a local statement (a statement inside a block, such as a function
 body, closure, loop or `case` body) as a `tuple_expression` with no named
 children, so a `()` statement on its own line parses without an error. Top-level

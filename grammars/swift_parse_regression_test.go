@@ -1323,9 +1323,9 @@ for target in package.targets {
 `
 
 // TestSwiftEmptyTupleParses guards the empty tuple `()`. Upstream
-// tree-sitter-swift at 00bbb0a2 parses each `()` only with a MISSING `!`
-// inside its tuple_expression, so swift-nio's Package.swift was refused as
-// unreadable. Each `()` here must parse as a tuple_expression with no named
+// tree-sitter-swift at 00bbb0a2 and 9e3b87f6 parses each `()` only with a
+// MISSING `!` inside its tuple_expression, so swift-nio's Package.swift was
+// refused as unreadable. Each `()` here must parse as a tuple_expression with no named
 // child, and no input may hold an ERROR or MISSING node.
 func TestSwiftEmptyTupleParses(t *testing.T) {
 	lang := SwiftLanguage()

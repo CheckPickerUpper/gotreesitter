@@ -266,7 +266,7 @@ func TestSwiftRecoveryTelemetryWitnesses(t *testing.T) {
 	gotreesitter.SetAdmissionCandidateRouteDefault(false)
 	t.Cleanup(func() { gotreesitter.SetAdmissionCandidateRouteDefault(previousAdmissionRoute) })
 
-	const swiftGrammarLockCommit = "00bbb0a2550f8bc0023a2a4992922d51ae045626"
+	const swiftGrammarLockCommit = "9e3b87f66f1fd2f3b931376fd3723ab788e337c3"
 	witnesses := []struct {
 		name         string
 		issue        string
@@ -280,10 +280,12 @@ func TestSwiftRecoveryTelemetryWitnesses(t *testing.T) {
 			wantHasError: true,
 		},
 		{
+			// Clean since tree-sitter-swift 187fd4d added the `unsafe`
+			// expression prefix.
 			name:         "swift-576-collection-algorithms",
 			issue:        "#576",
 			path:         filepath.Join("grammars", "testdata", "swift_corpus", "stdlib_CollectionAlgorithms.swift"),
-			wantHasError: true,
+			wantHasError: false,
 		},
 		{
 			name:         "swift-clean-control",

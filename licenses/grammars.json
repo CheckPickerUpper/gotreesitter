@@ -2317,13 +2317,13 @@
     {
       "name": "swift",
       "repo": "https://github.com/alex-pinkus/tree-sitter-swift",
-      "ref": "00bbb0a2550f8bc0023a2a4992922d51ae045626",
+      "ref": "9e3b87f66f1fd2f3b931376fd3723ab788e337c3",
       "spdx": "MIT",
       "license_name": "MIT License",
       "copyright_holders": [
         "Copyright (c) 2021 alex-pinkus"
       ],
-      "license_file_url": "https://github.com/alex-pinkus/tree-sitter-swift/blob/00bbb0a2550f8bc0023a2a4992922d51ae045626/LICENSE",
+      "license_file_url": "https://github.com/alex-pinkus/tree-sitter-swift/blob/9e3b87f66f1fd2f3b931376fd3723ab788e337c3/LICENSE",
       "method": "github_license_api",
       "copyleft": false
     },

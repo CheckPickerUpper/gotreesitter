@@ -29,9 +29,10 @@ func TestParitySwiftHiddenFieldProjectionDeepDigest(t *testing.T) {
 			source: "protocol P {\n  associatedtype Stride: SignedNumeric\n}\n",
 		},
 		{
-			name:      "issue-577-lifetime-attribute",
-			source:    "struct S {\n  @lifetime(copy value)\n  public init(_ value: Int) {}\n}\n",
-			wantError: true,
+			// tree-sitter-swift 5f435e24 added `copy x`, so both parsers
+			// read the attribute's argument.
+			name:   "issue-577-lifetime-attribute",
+			source: "struct S {\n  @lifetime(copy value)\n  public init(_ value: Int) {}\n}\n",
 		},
 	}
 

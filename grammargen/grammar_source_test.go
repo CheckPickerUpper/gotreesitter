@@ -218,9 +218,10 @@ func TestImportedKotlinSwiftGrammarConstructors(t *testing.T) {
 	if swift.Name != "swift" {
 		t.Fatalf("SwiftGrammar().Name = %q, want swift", swift.Name)
 	}
-	// Match the grammar locked at 00bbb0a2550f8bc0023a2a4992922d51ae045626.
-	if len(swift.Rules) != 306 {
-		t.Fatalf("SwiftGrammar rule count = %d, want 306", len(swift.Rules))
+	// The 309 rules of the grammar locked at
+	// 9e3b87f66f1fd2f3b931376fd3723ab788e337c3, plus the owned _empty_tuple.
+	if len(swift.Rules) != 310 {
+		t.Fatalf("SwiftGrammar rule count = %d, want 310", len(swift.Rules))
 	}
 	if got, want := externalRuleNames(swift), []string{
 		"multiline_comment",

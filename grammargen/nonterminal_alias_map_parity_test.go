@@ -451,7 +451,7 @@ func goGrammarJSONPathForTest(t *testing.T) string {
 // swiftGrammarJSONPathForTest locates the pinned tree-sitter-swift
 // grammar.json (see grammars/languages.lock and
 // grammars/runtime/swift_scanner.go's UpstreamCommit for the pinned commit —
-// both agree on 00bbb0a2550f8bc0023a2a4992922d51ae045626), following the
+// both agree on 9e3b87f66f1fd2f3b931376fd3723ab788e337c3), following the
 // same candidate-path convention as rustGrammarJSONPathForTest / lua's. Seed
 // it locally with:
 //

@@ -662,7 +662,7 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 	// real-corpus parity and race-timed witness were measured on blob 33fd9742
 	// (tree-sitter-swift 00bbb0a2, 2026-09-20), not on the blob pinned below.
 	"swift": {
-		blobSHA256: mustRuntimeProfileSHA256("f14367493729faa6fa183257f64c2523dbd268772cbae5bb4d168d769a35c350"),
+		blobSHA256: mustRuntimeProfileSHA256("b89e04ec822721357134643ec7cfb1caf1089579df83198051648dd0e39c785d"),
 		// Preserve navigation expressions with C's physical version order.
 		compactPackedGSSVersionOrder: true,
 		// The locked C ERROR lex row enables all 34 external symbols.

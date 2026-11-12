@@ -56,40 +56,40 @@ const (
 
 // Concrete symbol IDs from the generated Swift grammar ExternalSymbols.
 const (
-	swtSymBlockComment              gotreesitter.Symbol = 194
-	swtSymRawStrPart                gotreesitter.Symbol = 195
-	swtSymRawStrContinuingIndicator gotreesitter.Symbol = 196
-	swtSymRawStrEndPart             gotreesitter.Symbol = 197
-	swtSymImplicitSemi              gotreesitter.Symbol = 198
-	swtSymExplicitSemi              gotreesitter.Symbol = 199
-	swtSymArrowOperator             gotreesitter.Symbol = 200
-	swtSymDotOperator               gotreesitter.Symbol = 201
-	swtSymConjunctionOperator       gotreesitter.Symbol = 202
-	swtSymDisjunctionOperator       gotreesitter.Symbol = 203
-	swtSymNilCoalescingOperator     gotreesitter.Symbol = 204
-	swtSymDoubleOptional            gotreesitter.Symbol = 205
-	swtSymEqualSign                 gotreesitter.Symbol = 206
-	swtSymEqEq                      gotreesitter.Symbol = 207
-	swtSymPlusThenWs                gotreesitter.Symbol = 208
-	swtSymMinusThenWs               gotreesitter.Symbol = 209
-	swtSymBang                      gotreesitter.Symbol = 210
-	swtSymThrowsKeyword             gotreesitter.Symbol = 211
-	swtSymRethrowsKeyword           gotreesitter.Symbol = 212
-	swtSymDefaultKeyword            gotreesitter.Symbol = 213
-	swtSymWhereKeyword              gotreesitter.Symbol = 214
-	swtSymElseKeyword               gotreesitter.Symbol = 215
-	swtSymCatchKeyword              gotreesitter.Symbol = 216
-	swtSymAsKeyword                 gotreesitter.Symbol = 217
-	swtSymAsQuest                   gotreesitter.Symbol = 218
-	swtSymAsBang                    gotreesitter.Symbol = 219
-	swtSymAsyncKeyword              gotreesitter.Symbol = 220
-	swtSymCustomOperator            gotreesitter.Symbol = 221
-	swtSymHashSymbol                gotreesitter.Symbol = 222
-	swtSymDirectiveIf               gotreesitter.Symbol = 223
-	swtSymDirectiveElseif           gotreesitter.Symbol = 224
-	swtSymDirectiveElse             gotreesitter.Symbol = 225
-	swtSymDirectiveEndif            gotreesitter.Symbol = 226
-	swtSymFakeTryBang               gotreesitter.Symbol = 227
+	swtSymBlockComment              gotreesitter.Symbol = 198
+	swtSymRawStrPart                gotreesitter.Symbol = 199
+	swtSymRawStrContinuingIndicator gotreesitter.Symbol = 200
+	swtSymRawStrEndPart             gotreesitter.Symbol = 201
+	swtSymImplicitSemi              gotreesitter.Symbol = 202
+	swtSymExplicitSemi              gotreesitter.Symbol = 203
+	swtSymArrowOperator             gotreesitter.Symbol = 204
+	swtSymDotOperator               gotreesitter.Symbol = 205
+	swtSymConjunctionOperator       gotreesitter.Symbol = 206
+	swtSymDisjunctionOperator       gotreesitter.Symbol = 207
+	swtSymNilCoalescingOperator     gotreesitter.Symbol = 208
+	swtSymDoubleOptional            gotreesitter.Symbol = 209
+	swtSymEqualSign                 gotreesitter.Symbol = 210
+	swtSymEqEq                      gotreesitter.Symbol = 211
+	swtSymPlusThenWs                gotreesitter.Symbol = 212
+	swtSymMinusThenWs               gotreesitter.Symbol = 213
+	swtSymBang                      gotreesitter.Symbol = 214
+	swtSymThrowsKeyword             gotreesitter.Symbol = 215
+	swtSymRethrowsKeyword           gotreesitter.Symbol = 216
+	swtSymDefaultKeyword            gotreesitter.Symbol = 217
+	swtSymWhereKeyword              gotreesitter.Symbol = 218
+	swtSymElseKeyword               gotreesitter.Symbol = 219
+	swtSymCatchKeyword              gotreesitter.Symbol = 220
+	swtSymAsKeyword                 gotreesitter.Symbol = 221
+	swtSymAsQuest                   gotreesitter.Symbol = 222
+	swtSymAsBang                    gotreesitter.Symbol = 223
+	swtSymAsyncKeyword              gotreesitter.Symbol = 224
+	swtSymCustomOperator            gotreesitter.Symbol = 225
+	swtSymHashSymbol                gotreesitter.Symbol = 226
+	swtSymDirectiveIf               gotreesitter.Symbol = 227
+	swtSymDirectiveElseif           gotreesitter.Symbol = 228
+	swtSymDirectiveElse             gotreesitter.Symbol = 229
+	swtSymDirectiveEndif            gotreesitter.Symbol = 230
+	swtSymFakeTryBang               gotreesitter.Symbol = 231
 )
 
 // swtDefaultSymTable maps token indexes to concrete ts2go symbol IDs.
@@ -133,10 +133,10 @@ var swtDefaultSymTable = [swtTokenCount]gotreesitter.Symbol{
 var swiftExternalScannerSpec = ExternalScannerSpec{
 	Language:       "swift",
 	UpstreamRepo:   "https://github.com/alex-pinkus/tree-sitter-swift",
-	UpstreamCommit: "00bbb0a2550f8bc0023a2a4992922d51ae045626",
+	UpstreamCommit: "9e3b87f66f1fd2f3b931376fd3723ab788e337c3",
 	SourceFiles: []ExternalScannerSourceFile{
-		{Path: "src/grammar.json", SHA256: "ccf0f59c513048361e0188b025ae7075f054b91b7b7f29f8d3b1169596163026"},
-		{Path: "src/scanner.c", SHA256: "916a19613b034bab0ab8ae6d8b1f83c78cfcabd09f84cd7bb35c9d7835e40cac"},
+		{Path: "src/grammar.json", SHA256: "e60f4bce4a34f1d7923e150bc5d50948fe724eb1556daf690f20f05561f7dd4f"},
+		{Path: "src/scanner.c", SHA256: "f054430c6a1eb29ef2ca779a9c2103466236a1fc0f44bc64f82d353ddd723946"},
 	},
 	Externals: []string{
 		"multiline_comment",

@@ -52,7 +52,7 @@ func TestKotlinSwiftExternalScannerSpecs(t *testing.T) {
 	if got, want := swiftSpec.UpstreamRepo, "https://github.com/alex-pinkus/tree-sitter-swift"; got != want {
 		t.Fatalf("swift repo = %q, want %q", got, want)
 	}
-	if got, want := swiftSpec.UpstreamCommit, "00bbb0a2550f8bc0023a2a4992922d51ae045626"; got != want {
+	if got, want := swiftSpec.UpstreamCommit, "9e3b87f66f1fd2f3b931376fd3723ab788e337c3"; got != want {
 		t.Fatalf("swift commit = %q, want %q", got, want)
 	}
 	if got, want := len(swiftSpec.Externals), swtTokenCount; got != want {

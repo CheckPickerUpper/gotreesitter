@@ -37,29 +37,32 @@ func TestB16SwiftRecoveryTelemetryCOracle(t *testing.T) {
 		t.Fatalf("set Swift C language: %v", err)
 	}
 
+	// Locked C reads both #576 witnesses clean since tree-sitter-swift
+	// 187fd4d added the `unsafe` expression prefix. Go reads
+	// stdlib_CollectionAlgorithms.swift clean too, and still reports an error
+	// in stdlib_FloatingPointToString.swift.
 	witnesses := []struct {
-		name         string
-		issue        string
-		path         string
-		wantHasError bool
+		name           string
+		issue          string
+		path           string
+		wantGoHasError bool
+		wantCHasError  bool
 	}{
 		{
-			name:         "swift-586-floating-point",
-			issue:        "#586/#576",
-			path:         filepath.Join("..", "grammars", "testdata", "swift_corpus", "stdlib_FloatingPointToString.swift"),
-			wantHasError: true,
+			name:           "swift-586-floating-point",
+			issue:          "#586/#576",
+			path:           filepath.Join("..", "grammars", "testdata", "swift_corpus", "stdlib_FloatingPointToString.swift"),
+			wantGoHasError: true,
 		},
 		{
-			name:         "swift-576-collection-algorithms",
-			issue:        "#576",
-			path:         filepath.Join("..", "grammars", "testdata", "swift_corpus", "stdlib_CollectionAlgorithms.swift"),
-			wantHasError: true,
+			name:  "swift-576-collection-algorithms",
+			issue: "#576",
+			path:  filepath.Join("..", "grammars", "testdata", "swift_corpus", "stdlib_CollectionAlgorithms.swift"),
 		},
 		{
-			name:         "swift-clean-control",
-			issue:        "control",
-			path:         "",
-			wantHasError: false,
+			name:  "swift-clean-control",
+			issue: "control",
+			path:  "",
 		},
 	}
 
@@ -111,10 +114,10 @@ func TestB16SwiftRecoveryTelemetryCOracle(t *testing.T) {
 			// messages below must not touch a closed C tree.
 			goHasError, cHasError := goRoot.HasError(), cRoot.HasError()
 			goStart, goEnd, cStart, cEnd := goRoot.StartByte(), goRoot.EndByte(), cRoot.StartByte(), cRoot.EndByte()
-			if goHasError != witness.wantHasError || cHasError != witness.wantHasError {
+			if goHasError != witness.wantGoHasError || cHasError != witness.wantCHasError {
 				cTree.Close()
 				goTree.Release()
-				t.Fatalf("HasError() = Go:%v C:%v, want %v/%v", goHasError, cHasError, witness.wantHasError, witness.wantHasError)
+				t.Fatalf("HasError() = Go:%v C:%v, want %v/%v", goHasError, cHasError, witness.wantGoHasError, witness.wantCHasError)
 			}
 			if goStart != 0 || goEnd != uint32(len(source)) || cStart != 0 || cEnd != uint(len(source)) {
 				cTree.Close()

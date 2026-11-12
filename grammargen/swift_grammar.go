@@ -72,11 +72,14 @@ func SwiftGrammar() *Grammar {
 			Str("actor"),
 			Str("async"),
 			Str("consume"),
+			Str("copy"),
 			Str("discard"),
 			Str("each"),
 			Str("lazy"),
+			Str("open"),
 			Str("repeat"),
 			Str("package"),
+			Str("unsafe"),
 			Sym("_parameter_ownership_modifier"),
 		))
 
@@ -482,7 +485,7 @@ func SwiftGrammar() *Grammar {
 		Seq(
 			Sym("_hash_symbol"),
 			Pat(`\/\n`),
-			Pat(`(\/[^#]|[^/])*?\n\/#`),
+			Pat(`(\/[^#]|[^/])*?\n[ \t]*\/#`),
 		))
 
 	g.Define("_oneline_regex_literal",
@@ -666,12 +669,28 @@ func SwiftGrammar() *Grammar {
 		))
 
 	g.Define("array_type",
-		Seq(
-			Str("["),
-			Field("element",
-				Sym("_type"),
+		Choice(
+			Seq(
+				Str("["),
+				Field("element",
+					Sym("_type"),
+				),
+				Str("]"),
 			),
-			Str("]"),
+			Seq(
+				Str("["),
+				Field("count",
+					Choice(
+						Sym("integer_literal"),
+						Sym("simple_identifier"),
+					),
+				),
+				Str("of"),
+				Field("element",
+					Sym("_type"),
+				),
+				Str("]"),
+			),
 		))
 
 	g.Define("dictionary_type",
@@ -696,6 +715,7 @@ func SwiftGrammar() *Grammar {
 						Sym("tuple_type"),
 						Sym("array_type"),
 						Sym("dictionary_type"),
+						Sym("bracket_qualified_type"),
 					),
 				),
 				Repeat1(
@@ -1264,11 +1284,17 @@ func SwiftGrammar() *Grammar {
 			Seq(
 				Str("<"),
 				Seq(
-					Sym("_type"),
+					Choice(
+						Sym("_type"),
+						Sym("integer_literal"),
+					),
 					Repeat(
 						Seq(
 							Str(","),
-							Sym("_type"),
+							Choice(
+								Sym("_type"),
+								Sym("integer_literal"),
+							),
 						),
 					),
 					Choice(
@@ -1393,6 +1419,9 @@ func SwiftGrammar() *Grammar {
 						PrecLeft(0,
 							Sym("await_expression"),
 						),
+						PrecLeft(0,
+							Sym("unsafe_expression"),
+						),
 						PrecDynamic(1,
 							PrecLeft(-1,
 								Sym("ternary_expression"),
@@ -1414,6 +1443,9 @@ func SwiftGrammar() *Grammar {
 						),
 						PrecLeft(0,
 							Sym("call_expression"),
+						),
+						PrecLeft(0,
+							Sym("unsafe_expression"),
 						),
 						PrecDynamic(1,
 							PrecLeft(-1,
@@ -1454,9 +1486,49 @@ func SwiftGrammar() *Grammar {
 		))
 
 	g.Define("_consume_operator",
+		Choice(
+			Alias(
+				Str("consume"),
+				"consume", false,
+			),
+			Alias(
+				Str("copy"),
+				"copy", false,
+			),
+		))
+
+	g.Define("unsafe_expression",
+		PrecRight(-2,
+			Seq(
+				Sym("_unsafe_operator"),
+				Field("expr",
+					Choice(
+						PrecRight(-2,
+							Sym("_expression"),
+						),
+						PrecLeft(0,
+							Sym("call_expression"),
+						),
+						PrecLeft(0,
+							Sym("try_expression"),
+						),
+						PrecLeft(0,
+							Sym("await_expression"),
+						),
+						PrecDynamic(1,
+							PrecLeft(-1,
+								Sym("ternary_expression"),
+							),
+						),
+					),
+				),
+			),
+		))
+
+	g.Define("_unsafe_operator",
 		Alias(
-			Str("consume"),
-			"consume", false,
+			Str("unsafe"),
+			"unsafe", false,
 		))
 
 	g.Define("ternary_expression",
@@ -1512,7 +1584,7 @@ func SwiftGrammar() *Grammar {
 		))
 
 	g.Define("macro_invocation",
-		Prec(-2,
+		PrecRight(-2,
 			PrecDynamic(1,
 				Seq(
 					Sym("_hash_symbol"),
@@ -1521,7 +1593,10 @@ func SwiftGrammar() *Grammar {
 						Sym("type_parameters"),
 						Blank(),
 					),
-					Sym("call_suffix"),
+					Choice(
+						Sym("call_suffix"),
+						Blank(),
+					),
 				),
 			),
 		))
@@ -1540,6 +1615,7 @@ func SwiftGrammar() *Grammar {
 			Sym("try_expression"),
 			Sym("await_expression"),
 			Sym("consume_expression"),
+			Sym("unsafe_expression"),
 			Sym("discard_statement"),
 			Sym("_referenceable_operator"),
 			Sym("key_path_expression"),
@@ -1824,6 +1900,10 @@ func SwiftGrammar() *Grammar {
 				Choice(
 					Seq(
 						Sym("_arrow_operator"),
+						Choice(
+							Sym("parameter_modifiers"),
+							Blank(),
+						),
 						Field("return_type",
 							Sym("_possibly_implicitly_unwrapped_type"),
 						),
@@ -2286,19 +2366,17 @@ func SwiftGrammar() *Grammar {
 		Sym("_expression"))
 
 	g.Define("statements",
-		PrecLeft(0,
-			Seq(
-				Sym("_local_statement"),
-				Repeat(
-					Seq(
-						Sym("_semi"),
-						Sym("_local_statement"),
-					),
-				),
-				Choice(
+		Seq(
+			Sym("_local_statement"),
+			Repeat(
+				Seq(
 					Sym("_semi"),
-					Blank(),
+					Sym("_local_statement"),
 				),
+			),
+			Choice(
+				Sym("_semi"),
+				Blank(),
 			),
 		))
 
@@ -2376,6 +2454,10 @@ func SwiftGrammar() *Grammar {
 					Sym("_await_operator"),
 					Blank(),
 				),
+				Choice(
+					Sym("_unsafe_operator"),
+					Blank(),
+				),
 				Field("item",
 					Alias(
 						Sym("_binding_pattern_no_expr"),
@@ -2405,11 +2487,21 @@ func SwiftGrammar() *Grammar {
 				Sym("for_statement_await"),
 				"await_expression", true,
 			),
+			Alias(
+				Sym("for_statement_unsafe"),
+				"unsafe_expression", true,
+			),
 		))
 
 	g.Define("for_statement_await",
 		Seq(
 			Sym("_await_operator"),
+			Sym("_expression"),
+		))
+
+	g.Define("for_statement_unsafe",
+		Seq(
+			Sym("_unsafe_operator"),
 			Sym("_expression"),
 		))
 
@@ -2957,6 +3049,10 @@ func SwiftGrammar() *Grammar {
 				Choice(
 					Seq(
 						Sym("_arrow_operator"),
+						Choice(
+							Sym("parameter_modifiers"),
+							Blank(),
+						),
 						Field("return_type",
 							Sym("_possibly_implicitly_unwrapped_type"),
 						),
@@ -3212,6 +3308,10 @@ func SwiftGrammar() *Grammar {
 		Seq(
 			Choice(
 				Sym("type_parameter_modifiers"),
+				Blank(),
+			),
+			Choice(
+				Str("let"),
 				Blank(),
 			),
 			Sym("_type_parameter_possibly_packed"),
@@ -3843,6 +3943,10 @@ func SwiftGrammar() *Grammar {
 				Choice(
 					Seq(
 						Sym("_arrow_operator"),
+						Choice(
+							Sym("parameter_modifiers"),
+							Blank(),
+						),
 						Field("return_type",
 							Sym("_possibly_implicitly_unwrapped_type"),
 						),
@@ -4102,6 +4206,22 @@ func SwiftGrammar() *Grammar {
 				),
 			),
 			Seq(
+				Repeat1(
+					Sym("simple_identifier"),
+				),
+				Seq(
+					Sym("integer_literal"),
+					Repeat(
+						Seq(
+							Str("."),
+							Sym("integer_literal"),
+						),
+					),
+				),
+			),
+			Seq(
+				Sym("simple_identifier"),
+				Str(":"),
 				Repeat1(
 					Sym("simple_identifier"),
 				),
@@ -4451,6 +4571,8 @@ func SwiftGrammar() *Grammar {
 		Choice(
 			Str("borrowing"),
 			Str("consuming"),
+			Str("sending"),
+			Str("isolated"),
 		))
 
 	g.Define("use_site_target",
@@ -4634,6 +4756,7 @@ func SwiftGrammar() *Grammar {
 		[]string{"_primary_expression", "lambda_parameter"},
 		[]string{"_tuple_type_item_identifier", "tuple_expression"},
 		[]string{"modifiers"},
+		[]string{"statements"},
 		[]string{"_additive_operator", "_prefix_unary_operator"},
 		[]string{"_referenceable_operator", "_prefix_unary_operator"},
 		[]string{"capture_list_item", "_expression"},
@@ -4645,8 +4768,12 @@ func SwiftGrammar() *Grammar {
 		[]string{"try_expression", "_primary_expression"},
 		[]string{"await_expression", "_unary_expression"},
 		[]string{"await_expression", "_expression"},
+		[]string{"await_expression", "_primary_expression"},
 		[]string{"consume_expression", "_unary_expression"},
 		[]string{"consume_expression", "_expression"},
+		[]string{"unsafe_expression", "_unary_expression"},
+		[]string{"unsafe_expression", "_expression"},
+		[]string{"unsafe_expression", "_primary_expression"},
 		[]string{"_local_property_declaration", "_local_typealias_declaration", "_local_function_declaration", "_local_class_declaration", "computed_getter", "computed_modify", "computed_setter"},
 		[]string{"_bodyless_function_declaration", "property_modifier"},
 		[]string{"init_declaration", "property_modifier"},
@@ -4665,6 +4792,7 @@ func SwiftGrammar() *Grammar {
 		[]string{"_contextual_simple_identifier", "type_pack_expansion"},
 		[]string{"_contextual_simple_identifier", "visibility_modifier"},
 		[]string{"_contextual_simple_identifier", "_consume_operator"},
+		[]string{"_contextual_simple_identifier", "_unsafe_operator"},
 	)
 
 	g.SetExternals(

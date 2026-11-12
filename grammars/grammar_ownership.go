@@ -51,7 +51,7 @@ var grammarOwnershipManifest = map[string]GrammarOwnership{
 	"rust":       {Tier: 1, MaintenanceClass: GrammarMaintenanceMirror},
 	"scala":      {Tier: 1, MaintenanceClass: GrammarMaintenanceMirror},
 	"sql":        {Tier: 1, MaintenanceClass: GrammarMaintenanceMirror},
-	"swift":      {Tier: 1, MaintenanceClass: GrammarMaintenanceOwn, UpstreamRepo: "https://github.com/alex-pinkus/tree-sitter-swift", UpstreamCommit: "00bbb0a2550f8bc0023a2a4992922d51ae045626", UpstreamLicense: "MIT"},
+	"swift":      {Tier: 1, MaintenanceClass: GrammarMaintenanceOwn, UpstreamRepo: "https://github.com/alex-pinkus/tree-sitter-swift", UpstreamCommit: "9e3b87f66f1fd2f3b931376fd3723ab788e337c3", UpstreamLicense: "MIT"},
 	"toml":       {Tier: 1, MaintenanceClass: GrammarMaintenanceMirror},
 	"tsx":        {Tier: 1, MaintenanceClass: GrammarMaintenanceMirror},
 	"typescript": {Tier: 1, MaintenanceClass: GrammarMaintenanceMirror},
