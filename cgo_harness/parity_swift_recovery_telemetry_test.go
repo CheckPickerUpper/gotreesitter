@@ -107,15 +107,19 @@ func TestB16SwiftRecoveryTelemetryCOracle(t *testing.T) {
 				t.Fatalf("inspect C Swift witness: %v", err)
 			}
 
-			if goRoot.HasError() != witness.wantHasError || cRoot.HasError() != witness.wantHasError {
+			// Read both roots before either tree is released: the failure
+			// messages below must not touch a closed C tree.
+			goHasError, cHasError := goRoot.HasError(), cRoot.HasError()
+			goStart, goEnd, cStart, cEnd := goRoot.StartByte(), goRoot.EndByte(), cRoot.StartByte(), cRoot.EndByte()
+			if goHasError != witness.wantHasError || cHasError != witness.wantHasError {
 				cTree.Close()
 				goTree.Release()
-				t.Fatalf("HasError() = Go:%v C:%v, want %v/%v", goRoot.HasError(), cRoot.HasError(), witness.wantHasError, witness.wantHasError)
+				t.Fatalf("HasError() = Go:%v C:%v, want %v/%v", goHasError, cHasError, witness.wantHasError, witness.wantHasError)
 			}
-			if goRoot.StartByte() != 0 || goRoot.EndByte() != uint32(len(source)) || cRoot.StartByte() != 0 || cRoot.EndByte() != uint(len(source)) {
+			if goStart != 0 || goEnd != uint32(len(source)) || cStart != 0 || cEnd != uint(len(source)) {
 				cTree.Close()
 				goTree.Release()
-				t.Fatalf("root span = Go:%d..%d C:%d..%d, want 0..%d", goRoot.StartByte(), goRoot.EndByte(), cRoot.StartByte(), cRoot.EndByte(), len(source))
+				t.Fatalf("root span = Go:%d..%d C:%d..%d, want 0..%d", goStart, goEnd, cStart, cEnd, len(source))
 			}
 			if !goStats.Enabled || !goStats.Completed {
 				cTree.Close()
