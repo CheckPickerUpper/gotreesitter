@@ -7952,7 +7952,7 @@ func isConflictAuxSymbol(sym int, ng *NormalizedGrammar) bool {
 		return false
 	}
 	info := ng.Symbols[sym]
-	return info.GeneratedRepeatAux || strings.Contains(info.Name, "_token")
+	return info.GeneratedRepeatAux || info.KeptInlineRule || strings.Contains(info.Name, "_token")
 }
 
 func (cache *conflictResolutionCache) resolveAuxToParents(sym int, ng *NormalizedGrammar) []int {

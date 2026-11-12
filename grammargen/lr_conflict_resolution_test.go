@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"slices"
 	"testing"
 )
 
@@ -3289,5 +3290,59 @@ func TestResolveShiftReduceKeepsLabeledStatementPropertyNameDeclaredConflict(t *
 	}
 	if len(got) != 2 {
 		t.Fatalf("resolved actions = %+v, want both the labeled_statement shift and the _property_name reduce kept (declared conflict, GLR fork)", got)
+	}
+}
+
+// TestResolveReduceReduceReadsKeptInlineRuleAsItsCallers pins that a declared
+// conflict covers a reduction of an inline rule too wide to splice. The rule
+// stays a nonterminal, while tree-sitter splices it into primary_expression,
+// so after "string" the conflict between primary_expression and
+// predefined_type keeps both reductions.
+func TestResolveReduceReduceReadsKeptInlineRuleAsItsCallers(t *testing.T) {
+	keywords := []*Rule{Str("string"), Str("number")}
+	for _, keyword := range []string{"as", "at", "be", "by", "do", "go", "if", "in", "is", "it", "me", "my", "no", "of", "on"} {
+		keywords = append(keywords, Str(keyword))
+	}
+	g := NewGrammar("test_conflict_kept_inline_rule")
+	g.Define("source_file", Repeat1(Sym("_statement")))
+	g.Define("_statement", Seq(Choice(Sym("primary_expression"), Sym("predefined_type")), Str(";")))
+	g.Define("primary_expression", Choice(Sym("identifier"), Alias(Sym("_keyword"), "identifier", true)))
+	g.Define("predefined_type", Choice(Str("string"), Str("number")))
+	g.Define("_keyword", Choice(keywords...))
+	g.Define("identifier", Pat(`[A-Z]+`))
+	g.SetInline("_keyword")
+	AddConflict(g, "primary_expression", "predefined_type")
+
+	ng, err := Normalize(g)
+	if err != nil {
+		t.Fatalf("Normalize: %v", err)
+	}
+	tables, err := buildLRTables(ng)
+	if err != nil {
+		t.Fatalf("buildLRTables: %v", err)
+	}
+	if _, err := resolveConflicts(context.Background(), tables, ng); err != nil {
+		t.Fatalf("resolveConflicts: %v", err)
+	}
+	cells := 0
+	for state, row := range tables.ActionTable {
+		for lookahead, actions := range row {
+			var reduced []string
+			for _, action := range actions {
+				if action.kind == lrReduce {
+					reduced = append(reduced, ng.Symbols[ng.Productions[action.prodIdx].LHS].Name)
+				}
+			}
+			if !slices.Contains(reduced, "predefined_type") {
+				continue
+			}
+			cells++
+			if !slices.Contains(reduced, "_keyword") {
+				t.Errorf("state %d on %q reduces %v, want _keyword kept beside predefined_type", state, ng.Symbols[lookahead].Name, reduced)
+			}
+		}
+	}
+	if cells == 0 {
+		t.Fatal("no action cell reduces predefined_type")
 	}
 }
