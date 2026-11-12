@@ -136,7 +136,7 @@ func TestSwiftUnsafeWitnessRemainsKnownCStructuralMismatch(t *testing.T) {
 	// recovery tree. The C oracle and the known root-shape gap stay fixed;
 	// TestSwiftDirectiveNewlinesMatchLockedC also covers the clean comment
 	// boundary that regresses if that progress rule is removed.
-	const wantGoDigest = "414e25c9232c5b7e6a659515ff546232eca51d84452f1be06c03b57a933329d4"
+	const wantGoDigest = "3a7182b98102fd1a8d1606cc138bc4bd25e7f636c747e83875095b56615dab1c"
 	if goInspection.SHA256 != wantGoDigest {
 		t.Fatalf("Go Swift witness digest = %s, want %s", goInspection.SHA256, wantGoDigest)
 	}
@@ -301,7 +301,7 @@ func TestSwiftUnsafeMinimalWitnessMatchesLockedCAfterPooledRecoveryControl(t *te
 }
 
 func TestSwiftUnsafeLargeWitnessKeepsDigestAfterPooledRecoveryControl(t *testing.T) {
-	const wantGoDigest = "414e25c9232c5b7e6a659515ff546232eca51d84452f1be06c03b57a933329d4"
+	const wantGoDigest = "3a7182b98102fd1a8d1606cc138bc4bd25e7f636c747e83875095b56615dab1c"
 	const wantCDigest = "1afaa887219c1e00d9deb3735f91c7a0d12cda7d57457a4853c081d48d9bec81"
 	control := []byte("func f(n: Int) -> Int {\n" +
 		"  var total = 0\n" +

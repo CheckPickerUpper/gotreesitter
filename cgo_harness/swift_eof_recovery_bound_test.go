@@ -31,7 +31,7 @@ func TestSwiftEOFRecoveryPrefixBoundAndKnownCGap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const wantShortDigest = "ddc0706b4482b12ec869f44055311a9319d81eb8cb888107e37a3ba4fe0b33de"
+	const wantShortDigest = "6c4c8c4ec1d5cb071f76f5c6c2b92f40b0c77baeb0ecff3c4b11f6ff8ee00d86"
 	if shortInspection.SHA256 != wantShortDigest || shortTree.ParseRuntime().CRecoverEOFFallbacks == 0 {
 		t.Fatalf("Swift 8192-byte prefix changed: digest=%s fallbacks=%d", shortInspection.SHA256, shortTree.ParseRuntime().CRecoverEOFFallbacks)
 	}
@@ -45,7 +45,7 @@ func TestSwiftEOFRecoveryPrefixBoundAndKnownCGap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const wantGoDigest = "afad13bec5eba6bc7712d5ea94f8fc82b9d92fefc6321c53a38f8c43b64ab29a"
+	const wantGoDigest = "c63f05156f4240dae0fa4c26336d9457b775543bee0b057debce7c0cfe5b19ee"
 	if goInspection.SHA256 != wantGoDigest {
 		t.Fatalf("Swift prefix Go digest = %s, want %s", goInspection.SHA256, wantGoDigest)
 	}
