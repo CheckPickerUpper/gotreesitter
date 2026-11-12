@@ -61,12 +61,11 @@ type dfaTokenSource struct {
 	// buf argument is not guaranteed immutable (see
 	// externalScannerCheckpointRecord.restore's own defensive copy), and
 	// those buffers are state other bookkeeping for the same shared token
-	// still depends on after the probe returns.
-	externalProbeScratch []byte
-	// externalProbeAfterScratch holds the scanner state a probe's scan left
-	// behind, so probeExternalTokenForLexState can report whether the scan
-	// ended in the state the shared token left.
-	externalProbeAfterScratch   []byte
+	// still depends on after the probe returns. Once the probe's checkpoint
+	// has copied the pre-scan state out of it, the same buffer holds the
+	// state the scan left, so probeExternalTokenForLexState can report
+	// whether the scan ended in the state the shared token left.
+	externalProbeScratch        []byte
 	externalLexer               ExternalLexer
 	externalRetryLexer          ExternalLexer
 	externalLookaheadEndByte    uint32
@@ -5026,11 +5025,6 @@ func (d *dfaTokenSource) probeExternalTokenForLexState(source []byte, lexState u
 	if !ok || probed.Symbol == 0 {
 		return Token{}, externalScannerCheckpoint{}, false, false
 	}
-	after := d.captureExternalScannerStateInto(&d.externalProbeAfterScratch)
-	// Siblings that took the shared token continue from the state the shared
-	// lexing left (dispatchPayload); a stack taking this token stays in step
-	// with them only when its scan ends in that same state.
-	stateKept = bytes.Equal(after, dispatchPayload)
 	probed.ExternalScannerToken = true
 	probed.ExternalScannerStartByte = scanStart
 
@@ -5048,6 +5042,13 @@ func (d *dfaTokenSource) probeExternalTokenForLexState(source []byte, lexState u
 		start := append([]byte(nil), before...)
 		checkpoint = externalScannerCheckpoint{start: start, end: append([]byte(nil), start...)}
 	}
+	// before may alias externalProbeScratch; the checkpoint above has copied
+	// it, so the scratch buffer is free to hold the state the scan left.
+	after := d.captureExternalScannerStateInto(&d.externalProbeScratch)
+	// Siblings that took the shared token continue from the state the shared
+	// lexing left (dispatchPayload); a stack taking this token stays in step
+	// with them only when its scan ends in that same state.
+	stateKept = bytes.Equal(after, dispatchPayload)
 	return probed, checkpoint, stateKept, true
 }
 
