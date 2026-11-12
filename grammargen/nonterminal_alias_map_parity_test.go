@@ -31,23 +31,25 @@ const shippedGrammarBlobsDir = "../grammars/grammar_blobs"
 // TestLuaNonTerminalAliasMapParity for the new language before adding it
 // here — this map is a deliberate gate, not just documentation.
 var nonTerminalAliasMapExpectedNonEmptyLanguages = map[string]bool{
-	"agda":      true,
-	"arduino":   true,
-	"caddy":     true,
-	"c_sharp":   true,
-	"cue":       true,
-	"d":         true,
-	"gitcommit": true,
-	"go":        true,
-	"kotlin":    true,
-	"lua":       true,
-	"ocaml":     true,
-	"odin":      true,
-	"org":       true,
-	"perl":      true,
-	"r":         true,
-	"swift":     true,
-	"yaml":      true,
+	"agda":       true,
+	"arduino":    true,
+	"caddy":      true,
+	"c_sharp":    true,
+	"cue":        true,
+	"d":          true,
+	"gitcommit":  true,
+	"go":         true,
+	"kotlin":     true,
+	"lua":        true,
+	"ocaml":      true,
+	"odin":       true,
+	"org":        true,
+	"perl":       true,
+	"r":          true,
+	"swift":      true,
+	"tsx":        true,
+	"typescript": true,
+	"yaml":       true,
 }
 
 // These shipped maps have known grammargen parity divergences.
@@ -65,9 +67,7 @@ var nonTerminalAliasMapKnownUncertifiedLanguages = map[string]bool{
 	// The locked Liquid C artifact aliases four hidden repeat wrappers to
 	// block; grammargen currently promotes those wrappers and omits the rows.
 	// Runtime parity is covered by TestCompactLiquidBlockTextLockedC.
-	"liquid":     true,
-	"tsx":        true,
-	"typescript": true,
+	"liquid": true,
 }
 
 // loadShippedBlob reads and decodes a shipped grammar blob by language name
@@ -723,11 +723,13 @@ func TestRNonTerminalAliasMapParity(t *testing.T) {
 }
 
 func TestTSXNonTerminalAliasMapParity(t *testing.T) {
-	t.Skip("known divergence: grammargen emits one extra property_identifier alias row")
+	path := aliasMapGrammarJSONPathForTest(t, "tsx", "typescript", "tsx/src")
+	nonTerminalAliasMapParityCheck(t, "tsx", path, 60*time.Second)
 }
 
 func TestTypeScriptNonTerminalAliasMapParity(t *testing.T) {
-	t.Skip("known divergence: grammargen emits one extra property_identifier alias row")
+	path := aliasMapGrammarJSONPathForTest(t, "typescript", "typescript", "typescript/src")
+	nonTerminalAliasMapParityCheck(t, "typescript", path, 60*time.Second)
 }
 
 // TestNonTerminalAliasMapSyntheticSelfAndAlias is a fast, offline (no
@@ -779,6 +781,45 @@ func TestNonTerminalAliasMapSyntheticSelfAndAlias(t *testing.T) {
 	}
 	if row[1] != gotreesitter.Symbol(quotedSym) {
 		t.Fatalf("_content alias map row[1] = %d, want quoted_content (%d)", row[1], quotedSym)
+	}
+}
+
+// TestNonTerminalAliasMapSyntheticInlineRuleAliasOmitted pins that an alias
+// written on a reference to an inline rule adds no NonTerminalAliasMap row.
+// tree-sitter gives every step of the inlined body the alias, but builds the
+// map from the grammar's own productions, where the step is the inline rule
+// itself, which has no symbol. Both of grammargen's inline paths are covered:
+// _call is spliced into its call site, so _expression reaches the alias
+// "call" only through _call's body; _keyword has more than 16 alternatives,
+// so grammargen keeps it as a hidden rule aliased two ways.
+func TestNonTerminalAliasMapSyntheticInlineRuleAliasOmitted(t *testing.T) {
+	keywords := make([]*Rule, 0, 17)
+	for _, keyword := range []string{"as", "at", "be", "by", "do", "go", "if", "in", "is", "it", "me", "my", "no", "of", "on", "or", "so"} {
+		keywords = append(keywords, Str(keyword))
+	}
+	g := NewGrammar("test_alias_map_inline_rule")
+	g.Define("source_file", Repeat1(Sym("_statement")))
+	g.Define("_statement", Choice(
+		Alias(Sym("_call"), "call", true),
+		Seq(Sym("_expression"), Str(";")),
+		Seq(Str("let"), Alias(Sym("_keyword"), "name", true)),
+		Seq(Str("get"), Alias(Sym("_keyword"), "property", true)),
+	))
+	g.Define("_call", Seq(Sym("_expression"), Str("()")))
+	g.Define("_expression", Choice(Sym("identifier"), Sym("number")))
+	g.Define("_keyword", Choice(keywords...))
+	g.Define("identifier", Pat(`[A-Z]+`))
+	g.Define("number", Pat(`[0-9]+`))
+	g.SetInline("_call", "_keyword")
+
+	lang, err := GenerateLanguage(g)
+	if err != nil {
+		t.Fatalf("GenerateLanguage: %v", err)
+	}
+	for symbol, row := range lang.NonTerminalAliasMap {
+		if len(row) > 0 {
+			t.Errorf("NonTerminalAliasMap row for %s = %v, want none", lang.SymbolNames[symbol], row)
+		}
 	}
 }
 

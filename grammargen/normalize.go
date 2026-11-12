@@ -71,6 +71,13 @@ type AliasInfo struct {
 	ChildIndex int
 	Name       string
 	Named      bool
+	// InheritedByInlining is true when the alias was written on a reference
+	// to an inline rule and reached this child only because the rule's body
+	// was spliced in. tree-sitter gives every step of an inlined production
+	// the alias of the step it replaced, but builds ts_non_terminal_alias_map
+	// from the grammar's own productions only, so such an alias names the
+	// child in the tree and adds no row to that map.
+	InheritedByInlining bool
 }
 
 // TerminalPattern describes a terminal symbol's match pattern for DFA generation.
@@ -4006,6 +4013,13 @@ type rhsElement struct {
 	hasPrec    bool   // true if an explicit compile-time precedence wrapper was present
 	assoc      Assoc  // associativity from enclosing prec wrapper
 	dynPrec    int    // dynamic precedence from enclosing prec_dynamic wrapper
+	// fromInlinedRule is true when the element came from an inline rule's
+	// spliced body.
+	fromInlinedRule bool
+	// aliasInheritedByInlining is true when aliasName came from an alias
+	// written on the reference to that inline rule (see
+	// AliasInfo.InheritedByInlining).
+	aliasInheritedByInlining bool
 }
 
 // enumerateAlternatives expands a rule containing inline Choice nodes
@@ -4013,6 +4027,17 @@ type rhsElement struct {
 func enumerateAlternatives(r *Rule) [][]*rhsElement {
 	if r == nil {
 		return [][]*rhsElement{{}}
+	}
+	if r.inlinedFrom != "" {
+		body := *r
+		body.inlinedFrom = ""
+		alternatives := enumerateAlternatives(&body)
+		for _, alternative := range alternatives {
+			for _, element := range alternative {
+				element.fromInlinedRule = true
+			}
+		}
+		return alternatives
 	}
 	switch r.Kind {
 	case RuleChoice:
@@ -4134,6 +4159,7 @@ func enumerateAlternatives(r *Rule) [][]*rhsElement {
 				if cp.aliasName == "" {
 					cp.aliasName = r.Value
 					cp.aliasNamed = r.Named
+					cp.aliasInheritedByInlining = cp.fromInlinedRule
 				}
 				tagged[i] = &cp
 			}
@@ -4243,9 +4269,10 @@ func collectLinearRHS(elems []*rhsElement, st *symbolTable, rhs *[]int, fields *
 		}
 		if elem.aliasName != "" && len(*rhs) > childIdx {
 			*aliases = append(*aliases, AliasInfo{
-				ChildIndex: childIdx,
-				Name:       elem.aliasName,
-				Named:      elem.aliasNamed,
+				ChildIndex:          childIdx,
+				Name:                elem.aliasName,
+				Named:               elem.aliasNamed,
+				InheritedByInlining: elem.aliasInheritedByInlining,
 			})
 		}
 	}
@@ -5420,6 +5447,23 @@ func expandInlineRules(g *Grammar) *Grammar {
 		}
 	}
 
+	// Inline rules that stay rules (too wide to splice, or still referenced
+	// past the depth limit), by their output names.
+	keptInline := make(map[string]bool)
+	for _, name := range g.Inline {
+		if _, ok := g.Rules[name]; !ok {
+			continue
+		}
+		if inlineBodies[name] != nil && !stillReferenced[name] {
+			continue
+		}
+		if renamed, ok := hiddenRenames[name]; ok {
+			keptInline[renamed] = true
+			continue
+		}
+		keptInline[name] = true
+	}
+
 	// Create a new grammar without the fully-inlined rules.
 	out := NewGrammar(g.Name)
 	for _, name := range g.RuleOrder {
@@ -5436,13 +5480,13 @@ func expandInlineRules(g *Grammar) *Grammar {
 			// with inline refs substituted (and handle its own nested refs).
 			rule = substituteInlineRefs(g.Rules[name], inlineBodies)
 		}
-		rule = applyHiddenRenames(rule, hiddenRenames)
+		rule = markInlineRuleReferences(applyHiddenRenames(rule, hiddenRenames), keptInline)
 		out.Define(outName, rule)
 	}
 
 	// Copy other fields.
 	for _, extra := range expandedExtras {
-		out.Extras = append(out.Extras, applyHiddenRenames(extra, hiddenRenames))
+		out.Extras = append(out.Extras, markInlineRuleReferences(applyHiddenRenames(extra, hiddenRenames), keptInline))
 	}
 	// Rename conflict group entries too.
 	for _, group := range g.Conflicts {
@@ -5561,7 +5605,9 @@ func substituteInlineRefsDepth(r *Rule, inlineBodies map[string]*Rule, depth int
 			if insideAlias {
 				clone = stripAliases(clone)
 			}
-			return clone
+			marked := *clone
+			marked.inlinedFrom = r.Value
+			return &marked
 		}
 		return r
 	}
@@ -5573,6 +5619,34 @@ func substituteInlineRefsDepth(r *Rule, inlineBodies map[string]*Rule, depth int
 	childInsideAlias := insideAlias || r.Kind == RuleAlias
 	for i, c := range r.Children {
 		out.Children[i] = substituteInlineRefsDepth(c, inlineBodies, depth, childInsideAlias)
+	}
+	return &out
+}
+
+// markInlineRuleReferences returns r with every reference to a rule in
+// keptInline marked as standing for that inline rule. The grammar declares
+// those rules inline, so tree-sitter gives them no symbol, and an alias on a
+// reference to one adds no ts_non_terminal_alias_map row, even where
+// grammargen keeps the rule as a hidden nonterminal.
+func markInlineRuleReferences(r *Rule, keptInline map[string]bool) *Rule {
+	if r == nil || len(keptInline) == 0 {
+		return r
+	}
+	if r.Kind == RuleSymbol {
+		if keptInline[r.Value] {
+			marked := *r
+			marked.inlinedFrom = r.Value
+			return &marked
+		}
+		return r
+	}
+	if len(r.Children) == 0 {
+		return r
+	}
+	out := *r
+	out.Children = make([]*Rule, len(r.Children))
+	for i, child := range r.Children {
+		out.Children[i] = markInlineRuleReferences(child, keptInline)
 	}
 	return &out
 }

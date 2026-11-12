@@ -33,6 +33,10 @@ type Rule struct {
 	Children []*Rule // sub-rules
 	Prec     int     // precedence value
 	Named    bool    // for alias: whether the alias is a named node
+	// inlinedFrom names the inline rule this node stands for: the root of its
+	// body where expandInlineRules splices it into a call site, or a
+	// reference to it where the rule is kept.
+	inlinedFrom string
 }
 
 // TestCase is an embedded grammar test case.

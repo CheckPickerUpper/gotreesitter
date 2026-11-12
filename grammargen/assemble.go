@@ -1796,6 +1796,12 @@ func buildNonTerminalAliasMap(lang *gotreesitter.Language, ng *NormalizedGrammar
 			// (normalize.go); treat it as unaliased rather than as an alias
 			// resolution to look up.
 			if ai, ok := aliasByIndex[idx]; ok && ai.Name != "" {
+				// tree-sitter reads this map from the grammar's own
+				// productions, where this child is still the inline rule's
+				// reference and carries no row.
+				if ai.InheritedByInlining {
+					continue
+				}
 				if aliasSym, ok2 := aliasSymMap[aliasSymbolKey{ai.Name, ai.Named}]; ok2 {
 					touch(rhsSym, aliasSym)
 					continue
