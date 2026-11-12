@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
+
+	gotreesitter "github.com/odvcencio/gotreesitter"
 )
 
 // TestParitySwiftUnknownAttributeStartsSwitchEntry checks that an `@unknown`
@@ -15,10 +17,14 @@ func TestParitySwiftUnknownAttributeStartsSwitchEntry(t *testing.T) {
 	tests := []struct {
 		name   string
 		source string
-		// lockedCReadsMissingToken is set when locked C itself reads the
-		// source with a MISSING token, so Go must match that tree exactly,
-		// errors included.
-		lockedCReadsMissingToken bool
+		// statementEmptyTuple is set when the source holds `()` statements.
+		// docs/grammar-ownership.md owns that divergence: locked C reads
+		// each as a tuple_expression holding `value: (bang (MISSING "!"))`,
+		// and this grammar reads it with no children. Go must read the
+		// source clean and match C's tree with only those children removed.
+		// Once tree-sitter-swift's own grammar reads `()` clean, C matches
+		// Go exactly and this field goes.
+		statementEmptyTuple bool
 	}{
 		{
 			name: "unknown-default-after-case",
@@ -48,7 +54,7 @@ func TestParitySwiftUnknownAttributeStartsSwitchEntry(t *testing.T) {
 				"@unknown default:\n" +
 				"    ()\n" +
 				"}\n",
-			lockedCReadsMissingToken: true,
+			statementEmptyTuple: true,
 		},
 		{
 			name: "unknown-default-first",
@@ -99,11 +105,8 @@ func TestParitySwiftUnknownAttributeStartsSwitchEntry(t *testing.T) {
 					if goTree.RootNode().HasError() {
 						t.Logf("Go tree: %s", goTree.RootNode().SExpr(goLang))
 					}
-					if test.lockedCReadsMissingToken {
-						if !cTree.RootNode().HasError() {
-							t.Fatal("locked C no longer reads a MISSING token here; drop lockedCReadsMissingToken")
-						}
-						assertLockedCTreeExactWithErrors(t, "Swift @unknown switch entry", goTree, goLang, cTree)
+					if test.statementEmptyTuple {
+						assertLockedCTreeExceptEmptyTupleBang(t, "Swift @unknown switch entry", goTree, goLang, cTree)
 						return
 					}
 					assertLockedCTreeExact(t, "Swift @unknown switch entry", goTree, goLang, cTree)
@@ -111,4 +114,90 @@ func TestParitySwiftUnknownAttributeStartsSwitchEntry(t *testing.T) {
 			}
 		})
 	}
+}
+
+// assertLockedCTreeExceptEmptyTupleBang checks that Go reads the source clean
+// and that Go's tree equals locked C's tree after one transform: each
+// tuple_expression's `value: (bang (MISSING "!"))` child is removed. Every
+// other difference fails, and so does a C tree with no such child, because C
+// then reads `()` clean and the case belongs back on exact parity.
+func assertLockedCTreeExceptEmptyTupleBang(t *testing.T, label string, goTree *gotreesitter.Tree, goLang *gotreesitter.Language, cTree *sitter.Tree) {
+	t.Helper()
+	goRoot := goTree.RootNode()
+	if goRoot.HasError() {
+		t.Fatalf("%s: Go reads an error: %s", label, goRoot.SExpr(goLang))
+	}
+	goNodes := DumpV1FromGo(goRoot, goLang).Nodes
+	var cNodes []DumpV1Node
+	removed := 0
+	cRoot := cTree.RootNode()
+	walkDumpV1CWithoutEmptyTupleBang(cRoot, rootPath(cRoot.Kind()), "", &cNodes, &removed)
+	if removed == 0 {
+		t.Fatalf("%s: locked C reads every () clean; return this case to exact parity", label)
+	}
+	for i := 0; i < len(goNodes) || i < len(cNodes); i++ {
+		switch {
+		case i >= len(goNodes):
+			t.Fatalf("%s: C has extra node %+v", label, cNodes[i])
+		case i >= len(cNodes):
+			t.Fatalf("%s: Go has extra node %+v", label, goNodes[i])
+		case goNodes[i] != cNodes[i]:
+			t.Fatalf("%s: node %d differs:\nGo: %+v\nC:  %+v", label, i, goNodes[i], cNodes[i])
+		}
+	}
+	t.Logf("%s: Go matches locked C at %d nodes, with %d empty-tuple bang children removed from C", label, len(goNodes), removed)
+}
+
+// walkDumpV1CWithoutEmptyTupleBang flattens a C tree as walkDumpV1C does,
+// leaving out each tuple_expression child that is `value: (bang (MISSING
+// "!"))`. Child counts, child indices and HasError are computed on the tree
+// without them. It returns whether the node's kept subtree holds an error.
+func walkDumpV1CWithoutEmptyTupleBang(node *sitter.Node, path, field string, out *[]DumpV1Node, removed *int) bool {
+	start := node.StartPosition()
+	end := node.EndPosition()
+	index := len(*out)
+	*out = append(*out, DumpV1Node{
+		Path:      path,
+		Type:      node.Kind(),
+		Field:     field,
+		IsNamed:   node.IsNamed(),
+		IsExtra:   node.IsExtra(),
+		StartByte: uint32(node.StartByte()),
+		EndByte:   uint32(node.EndByte()),
+		StartPoint: DumpV1Point{
+			Row:    uint32(start.Row),
+			Column: uint32(start.Column),
+		},
+		EndPoint: DumpV1Point{
+			Row:    uint32(end.Row),
+			Column: uint32(end.Column),
+		},
+	})
+	hasError := node.IsError() || node.IsMissing()
+	kept := 0
+	for i := 0; i < int(node.ChildCount()); i++ {
+		child := node.Child(uint(i))
+		childField := node.FieldNameForChild(uint32(i))
+		if node.Kind() == "tuple_expression" && isEmptyTupleMissingBang(child, childField) {
+			*removed++
+			continue
+		}
+		if walkDumpV1CWithoutEmptyTupleBang(child, childPath(path, child.Kind(), kept), childField, out, removed) {
+			hasError = true
+		}
+		kept++
+	}
+	(*out)[index].ChildCount = kept
+	(*out)[index].HasError = hasError
+	return hasError
+}
+
+// isEmptyTupleMissingBang reports whether a tuple_expression child is the
+// `value: (bang (MISSING "!"))` locked C writes for `()`.
+func isEmptyTupleMissingBang(child *sitter.Node, field string) bool {
+	if field != "value" || child.Kind() != "bang" || child.ChildCount() != 1 {
+		return false
+	}
+	only := child.Child(0)
+	return only.IsMissing() && only.Kind() == "!" && only.ChildCount() == 0
 }
