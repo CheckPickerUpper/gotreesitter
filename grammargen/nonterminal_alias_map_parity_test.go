@@ -42,6 +42,7 @@ var nonTerminalAliasMapExpectedNonEmptyLanguages = map[string]bool{
 	"kotlin":    true,
 	"lua":       true,
 	"ocaml":     true,
+	"odin":      true,
 	"org":       true,
 	"perl":      true,
 	"r":         true,

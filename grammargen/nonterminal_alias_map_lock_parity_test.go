@@ -59,6 +59,9 @@ func TestKotlinNonTerminalAliasMapParity(t *testing.T) {
 func TestOCamlNonTerminalAliasMapParity(t *testing.T) {
 	lockedNonTerminalAliasMapParity(t, "ocaml", "grammars/ocaml/src")
 }
+func TestOdinNonTerminalAliasMapParity(t *testing.T) {
+	lockedNonTerminalAliasMapParity(t, "odin", "src")
+}
 func TestOrgNonTerminalAliasMapParity(t *testing.T) { lockedNonTerminalAliasMapParity(t, "org", "src") }
 func TestPerlNonTerminalAliasMapParity(t *testing.T) {
 	lockedNonTerminalAliasMapParity(t, "perl", "src")
