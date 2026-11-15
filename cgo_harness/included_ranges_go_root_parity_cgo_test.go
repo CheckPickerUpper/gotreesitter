@@ -13,20 +13,14 @@ package cgoharness
 // grammars/markdown_injection_register.go maps the `go` and `golang` fence
 // languages to the Go grammar.
 //
-// Update: the parser's padding scan now clips to the included ranges, so the
-// route no longer forces recovery between two included ranges. All four
-// geometries pinned below now agree with the C oracle on the root symbol
-// (before the fix, one of the four produced an ERROR root here where C
-// produced source_file), and the Go arm's root member no longer fires on any
-// of them. The producer anchors each tested root at its first included byte.
-// Child counts and some trailing spans still diverge from C.
+// The parser's padding scan clips to the included ranges, so the route does
+// not force recovery between two included ranges. On all four geometries
+// below gotreesitter's root has C's symbol, start, child count and error
+// flag, and the Go arm's root member does not fire.
 //
-// READ THIS BEFORE CITING THIS TEST AS EVIDENCE. gotreesitter and the C
-// oracle do NOT agree on this route in general. They agree on the root symbol
-// for the four geometries pinned here. Their root start spans also match.
-// The root end and child count still diverge on selected geometries.
-// This test pins each observation per geometry. It is a change detector for
-// the route, not a parity certificate for the complete tree.
+// READ THIS BEFORE CITING THIS TEST AS EVIDENCE. It compares the root only,
+// not the tree under it, and on two geometries gotreesitter's root ends past
+// C's (goRootEndsPastC).
 //
 // Run: GTS_PARITY_ALLOW_HOST=1 go test ./cgo_harness -tags treesitter_c_parity \
 //        -run TestIncludedRangesGo -v
@@ -72,72 +66,60 @@ type includedRangesGeometry struct {
 	// root symbol.
 	armRewrites uint64
 	c           includedRangesRootObservation
-	gts         includedRangesRootObservation
+	// goRootEndsPastC is how many bytes after C's root end gotreesitter's
+	// root ends. It is nonzero where the last included range ends inside a
+	// token: Go has external tokens, so its token source lexes the whole
+	// source and filters tokens by range, and the token that starts inside
+	// the last range is kept whole. C's lexer stops at the range end.
+	goRootEndsPastC uint32
 	// note records what this geometry proves and what it does not.
 	note string
 }
 
-// includedRangesGoGeometries pins every measured geometry, including the ones
-// where gotreesitter diverges from C. Divergence is recorded, never asserted
-// away.
+// includedRangesGoGeometries pins C's root for every measured geometry.
+// gotreesitter's root is compared with the root C returns in the same run,
+// apart from goRootEndsPastC.
 //
-// The padding scan now clips to the included ranges: it no longer scans the
+// The padding scan clips to the included ranges: it does not scan the
 // excluded bytes between two ranges as if they had to be whitespace, so a
-// non-whitespace gap between ranges no longer kills every GLR stack and
-// forces recovery. That is what padding_kills_stacks used to pin. Every
-// tested geometry reaches a `source_file` root. The Go arm's root member does
-// not fire on these four cases because none supplies an ERROR root. Their root
-// starts match C. Child counts and some trailing spans still differ.
+// non-whitespace gap between ranges does not kill every GLR stack and force
+// recovery. Every tested geometry reaches a `source_file` root, and the Go
+// arm's root member does not fire because none supplies an ERROR root.
 var includedRangesGoGeometries = []includedRangesGeometry{
 	{
 		name:        "interior_anchors_arm_live",
 		spans:       [2][2]int{{26, 150}, {203, 276}},
 		armRewrites: 0,
 		c:           includedRangesRootObservation{"source_file", 26, 276, 7, true},
-		gts:         includedRangesRootObservation{"source_file", 26, 276, 10, true},
 		note: "The realistic injection shape: both ranges start at a positive " +
-			"offset. The root symbol matches C; the Go arm member does not " +
-			"fire, because the root already carries the right symbol and span " +
-			"before the member inspects it. The child count still diverges (10 " +
-			"vs. 7): the " +
-			"parser folds both ranges into one pass instead of the recovery " +
-			"reparse the old, unclipped scan used to force.",
+			"offset.",
 	},
 	{
 		name:        "anchored_at_zero_and_eof",
 		spans:       [2][2]int{{0, 150}, {203, 276}},
 		armRewrites: 0,
 		c:           includedRangesRootObservation{"source_file", 0, 276, 7, true},
-		gts:         includedRangesRootObservation{"source_file", 0, 276, 10, true},
 		note: "A shape an injection child never receives: a Markdown fence " +
 			"cannot start at byte 0, because the opening fence line always " +
-			"precedes the content. The root span still reaches C parity (both " +
-			"ranges anchor the root at document start and end), but the child " +
-			"count no longer does: this used to be the one geometry with full " +
-			"span-and-child-count parity, and clipping the padding scan traded " +
-			"that for a root symbol that matches C on every geometry instead.",
+			"precedes the content.",
 	},
 	{
-		name:        "trimmed_tail_child_count_diverges",
-		spans:       [2][2]int{{0, 150}, {203, 250}},
-		armRewrites: 0,
-		c:           includedRangesRootObservation{"source_file", 0, 250, 6, true},
-		gts:         includedRangesRootObservation{"source_file", 0, 251, 10, true},
-		note: "Moving the last range off end of file diverges the span and the " +
-			"child count even with the first range anchored at byte 0.",
+		name:            "trimmed_tail_child_count_diverges",
+		spans:           [2][2]int{{0, 150}, {203, 250}},
+		armRewrites:     0,
+		c:               includedRangesRootObservation{"source_file", 0, 250, 6, true},
+		goRootEndsPastC: 1,
+		note: "The last range ends at byte 250, inside `true` (247 to 251). " +
+			"gotreesitter keeps the whole token.",
 	},
 	{
-		name:        "padding_kills_stacks",
-		spans:       [2][2]int{{40, 150}, {203, 260}},
-		armRewrites: 0,
-		c:           includedRangesRootObservation{"source_file", 40, 260, 5, true},
-		gts:         includedRangesRootObservation{"source_file", 40, 264, 9, true},
-		note: "Before the padding-scan fix, the root symbol itself diverged " +
-			"here (gotreesitter published ERROR where C published source_file) " +
-			"and the Go arm member did not fire, because the recovery that " +
-			"produced the ERROR root happened by a different path than the one " +
-			"the member repairs. The root symbol now matches C. The span and " +
-			"child count still diverge.",
+		name:            "padding_kills_stacks",
+		spans:           [2][2]int{{40, 150}, {203, 260}},
+		armRewrites:     0,
+		c:               includedRangesRootObservation{"source_file", 40, 260, 5, true},
+		goRootEndsPastC: 4,
+		note: "The last range ends at byte 260, inside `syscall` (257 to 264). " +
+			"gotreesitter keeps the whole token.",
 	},
 }
 
@@ -233,12 +215,10 @@ func loadIncludedRangesGoFixture(t *testing.T) []byte {
 	return src
 }
 
-// TestIncludedRangesGoRootParity pins the measured root of both parsers on the
-// included-ranges route, per geometry. Every field is a snapshot: a change in
-// either parser, in either direction, fails here.
-//
-// This test asserts parity nowhere. It records what each parser produces. Read
-// the per-geometry note before citing any row as evidence.
+// TestIncludedRangesGoRootParity compares gotreesitter's root with the root C
+// returns in the same run on the included-ranges route, per geometry, and
+// pins C's root so a change in the oracle fails here too. The one allowed
+// difference is goRootEndsPastC.
 func TestIncludedRangesGoRootParity(t *testing.T) {
 	cLang := loadCanonicalGoCLanguage(t)
 	goLang := grammars.GoLanguage()
@@ -261,8 +241,10 @@ func TestIncludedRangesGoRootParity(t *testing.T) {
 			if gotC != geometry.c {
 				t.Errorf("C oracle root moved: got %+v, pinned %+v", gotC, geometry.c)
 			}
-			if gotGo != geometry.gts {
-				t.Errorf("gotreesitter root moved: got %+v, pinned %+v", gotGo, geometry.gts)
+			wantGo := gotC
+			wantGo.EndByte += geometry.goRootEndsPastC
+			if gotGo != wantGo {
+				t.Errorf("gotreesitter root %+v, want C's root from this run with the end %d bytes later: %+v", gotGo, geometry.goRootEndsPastC, wantGo)
 			}
 			if armRewrites != geometry.armRewrites {
 				t.Errorf("dispatch.go.source-file-root rewrites = %d, pinned %d", armRewrites, geometry.armRewrites)
