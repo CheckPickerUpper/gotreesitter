@@ -17,7 +17,6 @@ import (
 )
 
 type recursiveInsertionProfileExpectation struct {
-	grammarBlobSHA256            string
 	convergedReductionSplitDrops bool
 	primaryAcceptanceDerivation  bool
 	exactStackNodeEquivalence    bool
@@ -42,15 +41,12 @@ var recursiveInsertionRealCorpusRows = []recursiveInsertionRealCorpusRow{
 		bytes:        260,
 		sourceSHA256: "c60b55de99836dacb00a0f2808835895132996a95d52304cefab548b8cbdef65",
 		profile: recursiveInsertionProfileExpectation{
-			grammarBlobSHA256:            "fcfc8794bca4442ebf5688d88e2397c78a22c8f0b585c4e1b868986cfa52dd09",
 			convergedReductionSplitDrops: true,
 		},
 	},
 }
 
 type recursiveInsertionProfileSnapshot struct {
-	grammarBlobSHA256            [32]byte
-	grammarBlobSHA256OK          bool
 	convergedReductionSplitDrops bool
 	primaryAcceptanceDerivation  bool
 	exactStackNodeEquivalence    bool
@@ -204,10 +200,7 @@ func requireRecursiveInsertionCleanFullSpan(t testing.TB, tree *gts.Tree, source
 }
 
 func recursiveInsertionProfile(lang *gts.Language) recursiveInsertionProfileSnapshot {
-	grammarBlobSHA256, grammarBlobSHA256OK := lang.GrammarBlobSHA256()
 	return recursiveInsertionProfileSnapshot{
-		grammarBlobSHA256:            grammarBlobSHA256,
-		grammarBlobSHA256OK:          grammarBlobSHA256OK,
 		convergedReductionSplitDrops: lang.CompactConvergedReductionSplitDropsCertified,
 		primaryAcceptanceDerivation:  lang.CompactPrimaryAcceptanceDerivationCertified,
 		exactStackNodeEquivalence:    lang.ExactStackNodeEquivalenceCertified,
@@ -218,9 +211,6 @@ func recursiveInsertionProfile(lang *gts.Language) recursiveInsertionProfileSnap
 
 func requireRecursiveInsertionProfile(t testing.TB, want recursiveInsertionRealCorpusRow, got recursiveInsertionProfileSnapshot) {
 	t.Helper()
-	if !got.grammarBlobSHA256OK || hex.EncodeToString(got.grammarBlobSHA256[:]) != want.profile.grammarBlobSHA256 {
-		t.Fatalf("grammar blob digest=%x (present=%t), want %s", got.grammarBlobSHA256, got.grammarBlobSHA256OK, want.profile.grammarBlobSHA256)
-	}
 	if got.convergedReductionSplitDrops != want.profile.convergedReductionSplitDrops ||
 		got.primaryAcceptanceDerivation != want.profile.primaryAcceptanceDerivation ||
 		got.exactStackNodeEquivalence != want.profile.exactStackNodeEquivalence ||

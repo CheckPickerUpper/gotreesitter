@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
-	"os"
 	"testing"
 
 	gotreesitter "github.com/odvcencio/gotreesitter"
@@ -16,7 +15,6 @@ import (
 const (
 	javaScriptDynamicImportPositiveControlCommit = "143936b2a62b44eb779dda835b09abe0c26cc6d5"
 	javaScriptDynamicImportProducerFixCommit     = "eee20b8a54a1608b47cce0ab7fb934651e204d66"
-	javaScriptDynamicImportBlobSHA256            = "6706f93890f24d8ea90d6a140df5dde29c02ec8a3213bae16e8cc4df37e33ee0"
 )
 
 func TestJavaScriptDynamicImportRetirementRoutes(t *testing.T) {
@@ -43,13 +41,6 @@ func TestJavaScriptDynamicImportRetirementRoutes(t *testing.T) {
 			deepDigest: "e48a5956112fb1cec0f0de5b5121beca17795ab99b29e8ad8b8c9548737bd24a",
 			baseSource: []byte("async function f() {\n  const m = await fetch(\"foo\");\n  return m;\n}\n"),
 		},
-	}
-	blob, err := os.ReadFile("grammar_blobs/javascript.bin")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(blob)); got != javaScriptDynamicImportBlobSHA256 {
-		t.Fatalf("JavaScript blob digest = %s, want %s", got, javaScriptDynamicImportBlobSHA256)
 	}
 	language := JavascriptLanguage()
 	reusable, ok := language.ExternalScanner.(gotreesitter.IncrementalReuseExternalScanner)

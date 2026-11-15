@@ -48,10 +48,9 @@ type cooklangNextWitness struct {
 }
 
 const (
-	cooklangNextGrammarRepo       = "https://github.com/addcninblue/tree-sitter-cooklang"
-	cooklangNextGrammarCommit     = "4ebe237c1cf64cf3826fc249e9ec0988fe07e58e"
-	cooklangNextGrammarBlobSHA256 = "2fd57f20461bcc0830fd14420cd06ad08750dd3cbbc440670e63056d59b3692a"
-	cooklangNextCArtifactSHA256   = "009b897908abbc248d72855a7926b70715ac7955fed1f44c8fb2e8148f7ee83c"
+	cooklangNextGrammarRepo     = "https://github.com/addcninblue/tree-sitter-cooklang"
+	cooklangNextGrammarCommit   = "4ebe237c1cf64cf3826fc249e9ec0988fe07e58e"
+	cooklangNextCArtifactSHA256 = "009b897908abbc248d72855a7926b70715ac7955fed1f44c8fb2e8148f7ee83c"
 )
 
 // TestCooklangNextLiveArmLockedCRoutes records all five routes for Cooklang.
@@ -71,9 +70,7 @@ func TestCooklangNextLiveArmLockedCRoutes(t *testing.T) {
 	if got := cooklangNextFileSHA(t, "../grammars/languages.lock"); got != lockSHA256 {
 		t.Fatalf("grammar lock SHA-256=%s, want %s", got, lockSHA256)
 	}
-	if got := cooklangNextFileSHA(t, "../grammars/grammar_blobs/cooklang.bin"); got != cooklangNextGrammarBlobSHA256 {
-		t.Fatalf("Cooklang grammar blob SHA-256=%s, want %s", got, cooklangNextGrammarBlobSHA256)
-	}
+	blobSHA256 := cooklangNextFileSHA(t, "../grammars/grammar_blobs/cooklang.bin")
 	cLanguage, err := COracleLanguage("cooklang")
 	if err != nil {
 		t.Fatal(err)
@@ -88,7 +85,7 @@ func TestCooklangNextLiveArmLockedCRoutes(t *testing.T) {
 	if identity.GrammarArtifactSHA256 != cooklangNextCArtifactSHA256 {
 		t.Fatalf("C grammar artifact SHA-256=%s, want %s", identity.GrammarArtifactSHA256, cooklangNextCArtifactSHA256)
 	}
-	t.Logf("grammar=cooklang external_scanner=true grammar_lock_sha256=%s grammar_blob_sha256=%s c_runtime=%s@%s c_grammar=%s@%s c_artifact=%s c_artifact_sha256=%s", lockSHA256, cooklangNextGrammarBlobSHA256, identity.RuntimeVersion, identity.RuntimeCommit, identity.GrammarRepo, identity.GrammarCommit, identity.GrammarArtifactPath, identity.GrammarArtifactSHA256)
+	t.Logf("grammar=cooklang external_scanner=true grammar_lock_sha256=%s grammar_blob_sha256=%s c_runtime=%s@%s c_grammar=%s@%s c_artifact=%s c_artifact_sha256=%s", lockSHA256, blobSHA256, identity.RuntimeVersion, identity.RuntimeCommit, identity.GrammarRepo, identity.GrammarCommit, identity.GrammarArtifactPath, identity.GrammarArtifactSHA256)
 
 	witnesses := cooklangNextWitnesses(t)
 	for _, witness := range witnesses {
@@ -209,7 +206,6 @@ func TestCooklangNextLiveArmReceiptDocument(t *testing.T) {
 		"The Cooklang dispatcher arm remains live.",
 		"Evidence base: `7498a678c52029a82f312e9637ecb66b15defa0b`. Publication base: `675697a1144fad306489c5142aedaae0825545d9`.",
 		"The grammar lock SHA-256 is `9ddb6324afd014f6ecdd1cae3dd1ba238f1e62ce03d126e6d8b267ce34d72ecb`.",
-		"The embedded Go grammar blob SHA-256 is `2fd57f20461bcc0830fd14420cd06ad08750dd3cbbc440670e63056d59b3692a`.",
 		"The A0 (authenticated dispatcher census) manifest has 14 languages, 42 files, and 14 receipts. Cooklang has three files, three checked, three run, 1037 nodes visited, 1021 rewrites, two error roots, and zero parse errors.",
 		"The tracked census has seven fixtures across six languages. It omits Cooklang. Its aggregate has nine checked, nine run, 26022 nodes visited, 2107 rewrites, and zero error roots. The authenticated real-corpus census is unavailable.",
 		"The worktree lacks `cgo_harness/corpus_real`, `corpus_sources.lock`, and `cgo_harness/perf_scan/corpus_sources.lock`.",

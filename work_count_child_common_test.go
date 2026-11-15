@@ -87,9 +87,6 @@ func loadWorkCountChildInput() (workCountChildInput, error) {
 	}
 	blobHash := sha256.Sum256(blob)
 	blobSHA := hex.EncodeToString(blobHash[:])
-	if err := benchfixtures.VerifyGoGrammarIdentity(benchfixtures.GoGrammarCommit, blobSHA); err != nil {
-		return workCountChildInput{}, err
-	}
 	lang := grammars.GoLanguage()
 	if lang == nil {
 		return workCountChildInput{}, fmt.Errorf("load embedded Go language: nil")
@@ -167,8 +164,8 @@ func TestLoadWorkCountChildInputSelectsEveryCanonicalFixture(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if input.fixture.Fixture.ID != fixture.Fixture.ID || input.blobSHA != benchfixtures.GoGrammarBlobSHA256 {
-				t.Fatalf("selected fixture/grammar=%q/%s want=%q/%s", input.fixture.Fixture.ID, input.blobSHA, fixture.Fixture.ID, benchfixtures.GoGrammarBlobSHA256)
+			if input.fixture.Fixture.ID != fixture.Fixture.ID {
+				t.Fatalf("selected fixture=%q want=%q", input.fixture.Fixture.ID, fixture.Fixture.ID)
 			}
 		})
 	}

@@ -21,10 +21,6 @@ const (
 	GoFixtureOriginRevision = "a5df0aa5b3c5b20ce12bb21250bd166b9f47bd68"
 	// GoGrammarCommit is the tree-sitter-go revision pinned by languages.lock.
 	GoGrammarCommit = "2346a3ab1bb3857b48b29d779a1ef9799a248cd7"
-	// GoGrammarBlobSHA256 identifies the exact gotreesitter Go grammar blob.
-	// Regenerated 2026-10-24 with cmd/grammargen (no -lr-split; see
-	// grammargen/README.md and docs/grammar-ownership.md).
-	GoGrammarBlobSHA256 = "4456f9b11706face73bd511d6e80bbd2f0d468055065296db6f5334fa101d379"
 )
 
 var goFixtureRequiredNodeKinds = [...]string{
@@ -254,16 +250,14 @@ func VerifyGoFullParseSuiteNodeKindCoverage(coverage NodeKindCoverage) error {
 	return fmt.Errorf("canonical Go benchmark suite has neither expression_switch_statement nor select_statement nodes")
 }
 
-// VerifyGoGrammarIdentity fails closed unless both Go parser implementations
-// are tied to the same pinned grammar revision and exact gotreesitter blob.
-// The C parity harness calls this before it performs deep tree parity and starts
-// either timer.
-func VerifyGoGrammarIdentity(commit, blobSHA256 string) error {
+// VerifyGoGrammarCommit fails closed unless the Go grammar revision is the one
+// the fixtures were selected against. The C parity harness calls this before it
+// performs deep tree parity and starts either timer. The fixtures' deep tree
+// digests pin what the embedded Go blob parses, so they need no copy of the
+// blob's own digest.
+func VerifyGoGrammarCommit(commit string) error {
 	if commit != GoGrammarCommit {
 		return fmt.Errorf("go grammar commit=%q want=%q", commit, GoGrammarCommit)
-	}
-	if blobSHA256 != GoGrammarBlobSHA256 {
-		return fmt.Errorf("go grammar blob sha256=%q want=%q", blobSHA256, GoGrammarBlobSHA256)
 	}
 	return nil
 }

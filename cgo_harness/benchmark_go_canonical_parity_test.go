@@ -3,7 +3,6 @@
 package cgoharness
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"testing"
 
@@ -99,12 +98,10 @@ func loadCanonicalGoCLanguage(tb testing.TB) *sitter.Language {
 	if !ok {
 		tb.Fatal("pinned Go C reference is missing from languages.lock")
 	}
-	blob := grammars.BlobByName("go")
-	if len(blob) == 0 {
+	if len(grammars.BlobByName("go")) == 0 {
 		tb.Fatal("load embedded Go grammar blob: empty result")
 	}
-	blobSHA256 := fmt.Sprintf("%x", sha256.Sum256(blob))
-	if err := benchfixtures.VerifyGoGrammarIdentity(lock.Commit, blobSHA256); err != nil {
+	if err := benchfixtures.VerifyGoGrammarCommit(lock.Commit); err != nil {
 		tb.Fatalf("Go oracle identity: %v", err)
 	}
 	return cLang

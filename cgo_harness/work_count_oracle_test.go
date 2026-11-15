@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/odvcencio/gotreesitter/grammars"
 	"github.com/odvcencio/gotreesitter/internal/benchfixtures"
 )
 
@@ -1885,6 +1886,13 @@ func workCountDecodeExact(t *testing.T, data []byte, result any) {
 	}
 }
 
+// workCountEmbeddedGoBlobSHA256 returns the SHA-256 of the embedded Go grammar
+// blob, which every work-count child parses with.
+func workCountEmbeddedGoBlobSHA256() string {
+	sum := sha256.Sum256(grammars.BlobByName("go"))
+	return hex.EncodeToString(sum[:])
+}
+
 func workCountValidateGoChild(t *testing.T, label, expectedSchema, expectedEngine string, result workCountGoChildResult, fixture benchfixtures.LoadedFixture) {
 	t.Helper()
 	if result.Schema != expectedSchema || result.DigestFormat != benchfixtures.DeepTreeDigestVersion {
@@ -1896,8 +1904,8 @@ func workCountValidateGoChild(t *testing.T, label, expectedSchema, expectedEngin
 	if result.Fixture != fixture.Fixture.ID || result.SourceSHA256 != fixture.Fixture.SHA256 {
 		t.Fatalf("%s fixture/source=%q/%s want=%q/%s", label, result.Fixture, result.SourceSHA256, fixture.Fixture.ID, fixture.Fixture.SHA256)
 	}
-	if result.GrammarCommit != benchfixtures.GoGrammarCommit || result.GrammarBlobSHA256 != benchfixtures.GoGrammarBlobSHA256 {
-		t.Fatalf("%s grammar=%s/%s want=%s/%s", label, result.GrammarCommit, result.GrammarBlobSHA256, benchfixtures.GoGrammarCommit, benchfixtures.GoGrammarBlobSHA256)
+	if want := workCountEmbeddedGoBlobSHA256(); result.GrammarCommit != benchfixtures.GoGrammarCommit || result.GrammarBlobSHA256 != want {
+		t.Fatalf("%s grammar=%s/%s want=%s/%s", label, result.GrammarCommit, result.GrammarBlobSHA256, benchfixtures.GoGrammarCommit, want)
 	}
 	if result.SourceBytes != uint32(len(fixture.Source)) || result.RootEndByte != uint32(len(fixture.Source)) || result.RootHasError {
 		t.Fatalf("%s span/error admission: source=%d root_end=%d error=%v", label, result.SourceBytes, result.RootEndByte, result.RootHasError)

@@ -1,7 +1,6 @@
 package gotreesitter_test
 
 import (
-	"crypto/sha256"
 	_ "embed"
 	"fmt"
 	"os"
@@ -179,12 +178,10 @@ func verifyRealGoBenchmarkGrammarIdentity() error {
 	if err != nil {
 		return err
 	}
-	blob := grammars.BlobByName("go")
-	if len(blob) == 0 {
+	if len(grammars.BlobByName("go")) == 0 {
 		return fmt.Errorf("Go benchmark grammar blob is empty")
 	}
-	blobSHA256 := fmt.Sprintf("%x", sha256.Sum256(blob))
-	return benchfixtures.VerifyGoGrammarIdentity(commit, blobSHA256)
+	return benchfixtures.VerifyGoGrammarCommit(commit)
 }
 
 func lockedGrammarCommit(lock, language string) (string, error) {

@@ -120,24 +120,3 @@ func admittedFixtureNodeKindCoverage() NodeKindCoverage {
 	}
 	return coverage
 }
-
-func TestVerifyGoGrammarIdentityFailsClosed(t *testing.T) {
-	if err := VerifyGoGrammarIdentity(GoGrammarCommit, GoGrammarBlobSHA256); err != nil {
-		t.Fatalf("verified identity: %v", err)
-	}
-	for _, tc := range []struct {
-		name   string
-		commit string
-		blob   string
-	}{
-		{name: "missing", commit: "", blob: ""},
-		{name: "wrong commit", commit: "deadbeef", blob: GoGrammarBlobSHA256},
-		{name: "wrong blob", commit: GoGrammarCommit, blob: "deadbeef"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			if err := VerifyGoGrammarIdentity(tc.commit, tc.blob); err == nil {
-				t.Fatal("identity unexpectedly admitted")
-			}
-		})
-	}
-}

@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
-	"os"
 	"testing"
 
 	gotreesitter "github.com/odvcencio/gotreesitter"
@@ -16,7 +15,6 @@ import (
 const (
 	kotlinInterpolatedCallPositiveControlCommit = "a321147042b7374a52570865d6ec44e1771669a4"
 	kotlinInterpolatedCallProducerFixCommit     = "b06804219dc0b27a0804d769a5cc24626568387d"
-	kotlinInterpolatedCallBlobSHA256            = "6dd6ce27c59930f74bc8bded2a4ba2b4f2ec0dd0fe39221f082c69b9251951a9"
 	kotlinInterpolatedCallSourceSHA256          = "2ab0943ca4d948edded0764c76ad9a30a923c1b5e8ecfb331b912a9d4aca2df1"
 	kotlinInterpolatedCallDeepDigest            = "1d39bfec6c6290c0b3440ee99ba8b05e4f4c9cc17ff233f950d2c62de73981dd"
 )
@@ -24,13 +22,6 @@ const (
 func TestKotlinInterpolatedCallRetirementRoutes(t *testing.T) {
 	gotreesitter.ResetAdmissionCandidateCounters()
 	t.Setenv("GTS_DISPATCHER_CENSUS", "1")
-	blob, err := os.ReadFile("grammar_blobs/kotlin.bin")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(blob)); got != kotlinInterpolatedCallBlobSHA256 {
-		t.Fatalf("Kotlin blob digest=%s, want %s", got, kotlinInterpolatedCallBlobSHA256)
-	}
 	language := KotlinLanguage()
 	source := []byte("package demo\n\nfun f() {\n  val time = if (true) \"${Instant.now()} \" else \"\"\n}\n")
 	if got := fmt.Sprintf("%x", sha256.Sum256(source)); got != kotlinInterpolatedCallSourceSHA256 {

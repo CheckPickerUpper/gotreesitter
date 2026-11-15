@@ -650,7 +650,7 @@ func workCountValidateParserCoreChild(t *testing.T, result workCountBoardParserC
 	if result.Fixture != fixture.Fixture.ID || result.SourceSHA256 != fixture.Fixture.SHA256 || result.SourceBytes != uint32(len(fixture.Source)) || result.RootEndByte != uint32(len(fixture.Source)) || result.RootHasError {
 		t.Fatalf("parser-core child fixture/span drift: %+v", result)
 	}
-	if result.GrammarCommit != benchfixtures.GoGrammarCommit || result.GrammarBlobSHA256 != benchfixtures.GoGrammarBlobSHA256 || result.DeepTreeSHA256 != fixture.Fixture.DeepTreeSHA256 {
+	if result.GrammarCommit != benchfixtures.GoGrammarCommit || result.GrammarBlobSHA256 != workCountEmbeddedGoBlobSHA256() || result.DeepTreeSHA256 != fixture.Fixture.DeepTreeSHA256 {
 		t.Fatalf("parser-core child grammar/tree identity drift: grammar=%s/%s tree=%s", result.GrammarCommit, result.GrammarBlobSHA256, result.DeepTreeSHA256)
 	}
 	if result.CandidateFallbacks != 0 || result.CoreWork.Reductions != result.CoreWork.ReductionPopRequests {

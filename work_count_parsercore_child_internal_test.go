@@ -18,7 +18,6 @@ const (
 	parserCoreWorkCountContract    = "gts-work-count/v2"
 	parserCoreWorkCountDigest      = "gts-deep-tree-v1"
 	parserCoreWorkCountGrammar     = "2346a3ab1bb3857b48b29d779a1ef9799a248cd7"
-	parserCoreWorkCountBlob        = "4456f9b11706face73bd511d6e80bbd2f0d468055065296db6f5334fa101d379"
 )
 
 type parserCoreWorkCountCoreWork struct {
@@ -205,7 +204,7 @@ func TestParserCoreWorkCountChild(t *testing.T) {
 		Schema: parserCoreWorkCountChildSchema, Engine: parserCoreWorkCountEngine,
 		CounterContract: parserCoreWorkCountContract, DigestFormat: parserCoreWorkCountDigest,
 		Fixture: fixtureID, SourceSHA256: admission.sourceSHA256, SourceBytes: uint32(len(source)),
-		GrammarCommit: parserCoreWorkCountGrammar, GrammarBlobSHA256: parserCoreWorkCountBlob,
+		GrammarCommit: parserCoreWorkCountGrammar, GrammarBlobSHA256: fmt.Sprintf("%x", sha256.Sum256(parserCoreCertifiedGoBlob)),
 		DeepTreeSHA256: digest, RootEndByte: tree.root.endByte, RootHasError: tree.root.HasError(),
 		CandidateFallbacks: 0,
 		CoreWork: parserCoreWorkCountCoreWork{

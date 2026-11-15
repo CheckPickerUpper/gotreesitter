@@ -152,8 +152,8 @@ func TestDiagnosticPairedSemanticTraceCanonicalReceipt(t *testing.T) {
 	if err := decoder.Decode(&receipt); err != nil {
 		t.Fatal(err)
 	}
-	if receipt.Schema != "gts-paired-semantic-trace-receipt/v1" || receipt.Contract != "gts-paired-semantic-trace-contract/v1" || receipt.GrammarBlobSHA256 != benchfixtures.GoGrammarBlobSHA256 {
-		t.Fatalf("paired receipt identity drifted: schema=%q contract=%q grammar=%q", receipt.Schema, receipt.Contract, receipt.GrammarBlobSHA256)
+	if receipt.Schema != "gts-paired-semantic-trace-receipt/v1" || receipt.Contract != "gts-paired-semantic-trace-contract/v1" {
+		t.Fatalf("paired receipt identity drifted: schema=%q contract=%q", receipt.Schema, receipt.Contract)
 	}
 	manifestData, err := os.ReadFile(receipt.Production.PatchManifest)
 	if err != nil {

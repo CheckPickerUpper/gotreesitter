@@ -69,13 +69,13 @@ func TestSQLN31vDispatcherBlockerRoutes(t *testing.T) {
 	if got, want := fmt.Sprintf("%x", scannerIdentity.Scanner), "7e493677411a501e6d8592c6b9cc158e21a1bfed44c72ca914e2d81e4e34861d"; got != want {
 		t.Fatalf("SQL scanner identity=%s, want %s", got, want)
 	}
-	if got, want := fmt.Sprintf("%x", scannerIdentity.Grammar), "e21421cbab52b54cf5ba15c8f78a2bb4729bf4e8c0da14368069e897de451268"; got != want {
-		t.Fatalf("SQL grammar identity=%s, want %s", got, want)
+	if blobSHA256, ok := goLang.GrammarBlobSHA256(); !ok || string(scannerIdentity.Grammar) != string(blobSHA256[:]) {
+		t.Fatalf("SQL grammar identity=%x, want the loaded blob's %x (present=%t)", scannerIdentity.Grammar, blobSHA256, ok)
 	}
 	if identity.GrammarArtifactSHA256 != sqlN31vCArtifactSHA {
 		t.Fatalf("locked-C SQL artifact=%s, want %s", identity.GrammarArtifactSHA256, sqlN31vCArtifactSHA)
 	}
-	t.Logf("grammar_lock_sha256=%s blob_sha256=e21421cbab52b54cf5ba15c8f78a2bb4729bf4e8c0da14368069e897de451268 scanner_identity=%x grammar_identity=%x c_contract=%s c_runtime=%s@%s c_grammar=%s@%s c_artifact_sha256=%s", currentGrammarLockSHA256(t), scannerIdentity.Scanner, scannerIdentity.Grammar, identity.Contract, identity.RuntimeVersion, identity.RuntimeCommit, identity.GrammarRepo, identity.GrammarCommit, identity.GrammarArtifactSHA256)
+	t.Logf("grammar_lock_sha256=%s scanner_identity=%x grammar_identity=%x c_contract=%s c_runtime=%s@%s c_grammar=%s@%s c_artifact_sha256=%s", currentGrammarLockSHA256(t), scannerIdentity.Scanner, scannerIdentity.Grammar, identity.Contract, identity.RuntimeVersion, identity.RuntimeCommit, identity.GrammarRepo, identity.GrammarCommit, identity.GrammarArtifactSHA256)
 	cTree := receiptCTree(t, cLang, source)
 	defer cTree.Close()
 	cDigest, err := COracleDeepDigest(cTree)

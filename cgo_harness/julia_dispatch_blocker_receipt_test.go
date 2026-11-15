@@ -45,7 +45,6 @@ type juliaDispatchExpected struct {
 }
 
 const (
-	juliaGrammarBlobSHA256     = "c716f2b9ee3852cc25a26107b7a1c78b9f76585fa77774d8f8a1b47ad590134f"
 	juliaGrammarRepo           = "https://github.com/tree-sitter/tree-sitter-julia"
 	juliaGrammarCommit         = "e0f9dcd180fdcfcfa8d79a3531e11d99e79321d3"
 	juliaCArtifactSHA256       = "ac44385e88e2f5dc8c78dafef4eaf28f89bd2f922cc6a68e282b1b7b21f7eb8c"
@@ -293,7 +292,6 @@ func juliaDispatchCheckStaticEvidence(t *testing.T, identity COracleBuildIdentit
 	}
 	for path, want := range map[string]string{
 		"../grammars/languages.lock":                        currentGrammarLockSHA256(t),
-		"../grammars/grammar_blobs/julia.bin":               juliaGrammarBlobSHA256,
 		"../testdata/dispatcher_census_a0_manifest_v1.json": juliaA0ManifestSHA256,
 		"../testdata/dispatcher_census_tracked_v1.json":     juliaTrackedManifestSHA256,
 		"perf_scan/corpus_sources.lock.sha256":              "2b2209597d1701ccc813bd35d1685b5b13730e6ebd285e66485ce812e35877cf",
@@ -319,9 +317,6 @@ func juliaDispatchCheckStaticEvidence(t *testing.T, identity COracleBuildIdentit
 	}
 	if identity.GrammarArtifactPath == "" {
 		t.Fatal("C artifact path is empty")
-	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(grammars.BlobByName("julia"))); got != juliaGrammarBlobSHA256 {
-		t.Fatalf("embedded Julia blob SHA-256=%s, want %s", got, juliaGrammarBlobSHA256)
 	}
 }
 
