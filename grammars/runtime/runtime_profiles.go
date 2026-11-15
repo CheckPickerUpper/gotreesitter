@@ -1,7 +1,6 @@
 package grammarruntime
 
 import (
-	"encoding/hex"
 	"slices"
 
 	gotreesitter "github.com/odvcencio/gotreesitter"
@@ -26,7 +25,6 @@ type builtinLanguageRuntimeProfile struct {
 	nativeUnaryWrapperFlattening        []nativeUnaryWrapperFlatteningProfile
 	visibleTerminalAliases              []visibleTerminalAliasProfile
 	compactConvergedSplitDrops          bool
-	compactEOFAcceptNoActionSiblings    bool
 	compactPrimaryAcceptDerivation      bool
 	compactAcceptanceStructuralElection bool
 	compactMixedGSSMerge                bool
@@ -37,16 +35,12 @@ type builtinLanguageRuntimeProfile struct {
 	zeroWidthChildPaddingSpan           bool
 	conflictActionVersionOrder          bool
 	compactStrategy2ErrorRegion         bool
-	compactS3MixedShiftReduceStates     []gotreesitter.StateID
-	compactRecoverEOFArtifact           gotreesitter.CompactRecoverEOFArtifactReceipt
-	compactStackSummaryRecovery         bool
 	compactMissingTokenInsertion        bool
 	compactS5EOFMissingInsertion        bool
 	compactFaithfulS5Recovery           bool
 	compactOwnedEOFRecovery             bool
 	compactRecoveryTrailingRetirement   bool
 	compactRecoveryErrorModeKeyword     bool
-	compactRecoveryTerminalAliases      []compactRecoveryTerminalAliasProfile
 	compactRecoveryPlainFirst           bool
 	lineContinuationEscapeByte          byte
 	conflictPolicies                    []gotreesitter.ConflictPolicy
@@ -70,12 +64,6 @@ type nativeUnaryWrapperFlatteningProfile struct {
 type visibleTerminalAliasProfile struct {
 	internalName string
 	publicName   string
-}
-
-type compactRecoveryTerminalAliasProfile struct {
-	resumeState  gotreesitter.StateID
-	resumeSymbol string
-	aliasSymbol  string
 }
 
 const (
@@ -177,40 +165,6 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 			},
 		},
 	},
-	// These exact artifacts previously needed the EOF sibling grant.
-	// The authenticated metadata route now proves the locked-C election.
-	"http":  {},
-	"robot": {},
-	// YAML's irreducible flow opener has one direct no-action EOF lineage whose
-	// C result is the recover_eof ERROR root. Keep this gate independent from
-	// S3, S4, and S5.
-	"yaml": {
-		compactRecoverEOFArtifact: gotreesitter.CompactRecoverEOFArtifactReceipt{
-			BlobSHA256:        mustRuntimeProfileSHA256("be6bd2f7c9d14160d8f74b29d63dc9a9294bc03ac1f1c4bde9522273f7c87b46"),
-			TerminalSymbol:    26,
-			EOFState:          189,
-			EOFByteOffset:     1,
-			Passes:            2,
-			Elections:         2,
-			ActionLookups:     2,
-			Dispatches:        1,
-			OrdinaryShifts:    1,
-			OrdinaryCohorts:   0,
-			ExtraShifts:       0,
-			ExtraCohorts:      0,
-			Reductions:        0,
-			Conflicts:         0,
-			ConflictActions:   0,
-			Forks:             0,
-			RepetitionFolds:   0,
-			RecoveryWork:      0,
-			NoActionDrops:     0,
-			ReductionPauses:   0,
-			Accepts:           0,
-			Canonicalizations: 1,
-			PeakHeaders:       1,
-		},
-	},
 	// The internal DFA skips each JSDoc line decoration before it produces the
 	// next tag token. The compact materializer admits the resulting interior
 	// gap only when the accepted terminal carries that exact prefix evidence.
@@ -245,25 +199,16 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 	// trees and outcomes across all files while cutting aggregate allocations;
 	// explicit forest parsing and non-certified languages keep the full budget.
 	//
-	// The same exact artifact certifies the complete pinned compact recovery
-	// frontier. All eight witnesses route with exact C parity. State 1042 keeps
-	// its mixed closure because js_log_3 and its 2,954-case mutation sweep match
-	// C there. Other mixed states decline instead of losing reduction versions.
+	// The same exact artifact certifies the pinned compact recovery frontier.
+	// Mixed shift/reduce states decline instead of losing reduction versions.
 	"javascript": {
 		automaticForestMemoryAllowance:    javascriptAutomaticForestMemoryAllowance,
 		compactConvergedSplitDrops:        true,
 		compactStrategy2ErrorRegion:       true,
-		compactS3MixedShiftReduceStates:   []gotreesitter.StateID{1042},
 		compactMissingTokenInsertion:      true,
 		compactRecoveryTrailingRetirement: true,
 		compactRecoveryErrorModeKeyword:   true,
-		compactRecoveryTerminalAliases: []compactRecoveryTerminalAliasProfile{
-			{resumeState: 20, resumeSymbol: "class", aliasSymbol: "property_identifier"},
-			{resumeState: 231, resumeSymbol: "+", aliasSymbol: "property_identifier"},
-			{resumeState: 1042, resumeSymbol: "_automatic_semicolon", aliasSymbol: "property_identifier"},
-			{resumeState: 1367, resumeSymbol: "{", aliasSymbol: "property_identifier"},
-		},
-		compactRecoveryPlainFirst: true,
+		compactRecoveryPlainFirst:         true,
 	},
 	// The locked Scala artifact certifies S5 missing insertion through a
 	// physical graph-head merge and a per-version lexer split. It also certifies
@@ -915,15 +860,6 @@ type exactRuntimeProfileExternalScanner interface {
 	externalScannerForExactRuntimeProfile() gotreesitter.ExternalScanner
 }
 
-func mustRuntimeProfileSHA256(raw string) (sum [32]byte) {
-	decoded, err := hex.DecodeString(raw)
-	if err != nil || len(decoded) != len(sum) {
-		panic("invalid built-in runtime-profile SHA-256")
-	}
-	copy(sum[:], decoded)
-	return sum
-}
-
 func attachBuiltinLanguageRuntimeProfile(name string, lang *gotreesitter.Language) bool {
 	if lang == nil {
 		return false
@@ -1019,10 +955,6 @@ func attachBuiltinLanguageRuntimeProfile(name string, lang *gotreesitter.Languag
 		lang.CompactConvergedReductionSplitDropsCertified = true
 		changed = true
 	}
-	if profile.compactEOFAcceptNoActionSiblings && !lang.CompactEOFAcceptNoActionSiblingsCertified {
-		lang.CompactEOFAcceptNoActionSiblingsCertified = true
-		changed = true
-	}
 	if profile.compactPrimaryAcceptDerivation && !lang.CompactPrimaryAcceptanceDerivationCertified {
 		lang.CompactPrimaryAcceptanceDerivationCertified = true
 		changed = true
@@ -1063,24 +995,6 @@ func attachBuiltinLanguageRuntimeProfile(name string, lang *gotreesitter.Languag
 		lang.CompactStrategy2ErrorRegionCertified = true
 		changed = true
 	}
-	if !slices.Equal(profile.compactS3MixedShiftReduceStates, lang.CompactS3MixedShiftReduceClosureStates) {
-		lang.CompactS3MixedShiftReduceClosureStates = slices.Clone(profile.compactS3MixedShiftReduceStates)
-		changed = true
-	}
-	if profile.compactRecoverEOFArtifact.BlobSHA256 != ([32]byte{}) {
-		if lang.CompactRecoverEOFArtifactReceipt != profile.compactRecoverEOFArtifact {
-			lang.CompactRecoverEOFArtifactReceipt = profile.compactRecoverEOFArtifact
-			changed = true
-		}
-		if !lang.CompactRecoverEOFCertified {
-			lang.CompactRecoverEOFCertified = true
-			changed = true
-		}
-	}
-	if profile.compactStackSummaryRecovery && !lang.CompactStackSummaryRecoveryCertified {
-		lang.CompactStackSummaryRecoveryCertified = true
-		changed = true
-	}
 	if profile.compactMissingTokenInsertion && !lang.CompactMissingTokenInsertionCertified {
 		lang.CompactMissingTokenInsertionCertified = true
 		changed = true
@@ -1103,11 +1017,6 @@ func attachBuiltinLanguageRuntimeProfile(name string, lang *gotreesitter.Languag
 	}
 	if profile.compactRecoveryErrorModeKeyword && !lang.CompactRecoveryErrorModeKeywordCaptureCertified {
 		lang.CompactRecoveryErrorModeKeywordCaptureCertified = true
-		changed = true
-	}
-	if rules := resolveCompactRecoveryTerminalAliasProfile(lang, profile.compactRecoveryTerminalAliases); len(rules) > 0 &&
-		!slices.Equal(lang.CompactRecoveryTerminalAliasRules, rules) {
-		lang.CompactRecoveryTerminalAliasRules = rules
 		changed = true
 	}
 	if profile.compactRecoveryPlainFirst && !lang.CompactRecoveryPlainFirstCertified {
@@ -1196,53 +1105,6 @@ func runtimeProfileNamedSymbol(lang *gotreesitter.Language, name string) (gotree
 		}
 	}
 	return 0, false
-}
-
-func resolveCompactRecoveryTerminalAliasProfile(
-	lang *gotreesitter.Language,
-	profile []compactRecoveryTerminalAliasProfile,
-) []gotreesitter.CompactRecoveryTerminalAliasRule {
-	if lang == nil || len(profile) == 0 {
-		return nil
-	}
-	rules := make([]gotreesitter.CompactRecoveryTerminalAliasRule, 0, len(profile))
-	for _, candidate := range profile {
-		resumeSymbol, resumeOK := runtimeProfileTerminalSymbol(lang, candidate.resumeSymbol)
-		aliasSymbol, aliasOK := runtimeProfileSymbol(lang, candidate.aliasSymbol)
-		if !resumeOK || !aliasOK || uint32(candidate.resumeState) >= lang.StateCount ||
-			uint32(resumeSymbol) >= lang.TokenCount || uint32(aliasSymbol) < lang.TokenCount {
-			return nil
-		}
-		rules = append(rules, gotreesitter.CompactRecoveryTerminalAliasRule{
-			ResumeState:  candidate.resumeState,
-			ResumeSymbol: resumeSymbol,
-			AliasSymbol:  aliasSymbol,
-		})
-	}
-	return rules
-}
-
-func runtimeProfileTerminalSymbol(lang *gotreesitter.Language, name string) (gotreesitter.Symbol, bool) {
-	if lang == nil {
-		return 0, false
-	}
-	limit := len(lang.SymbolNames)
-	if uint64(lang.TokenCount) < uint64(limit) {
-		limit = int(lang.TokenCount)
-	}
-	var match gotreesitter.Symbol
-	found := false
-	for index := 0; index < limit; index++ {
-		if lang.SymbolNames[index] != name {
-			continue
-		}
-		if found {
-			return 0, false
-		}
-		match = gotreesitter.Symbol(index)
-		found = true
-	}
-	return match, found
 }
 
 func runtimeProfileSymbol(lang *gotreesitter.Language, name string) (gotreesitter.Symbol, bool) {

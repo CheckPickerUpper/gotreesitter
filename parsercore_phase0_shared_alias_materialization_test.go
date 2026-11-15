@@ -242,7 +242,7 @@ func TestCompactSharedRecoveryAuthenticatesDirectTerminalAlias(t *testing.T) {
 	if root.ChildCount() != 1 || root.Child(0).Symbol() != 3 || root.Child(0).StartByte() != 0 || root.Child(0).EndByte() != 1 {
 		t.Fatalf("shared alias projection=%s", root.SExpr(lang))
 	}
-	if lang.CompactOwnedEOFRecoveryCertified || len(lang.CompactRecoveryTerminalAliasRules) != 0 {
+	if lang.CompactOwnedEOFRecoveryCertified {
 		t.Fatal("fixture unexpectedly supplied artifact alias authority")
 	}
 }

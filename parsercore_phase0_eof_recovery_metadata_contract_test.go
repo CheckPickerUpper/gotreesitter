@@ -25,7 +25,6 @@ const (
 const (
 	g4EOFActivationNone     = "none"
 	g4EOFActivationMetadata = "metadata"
-	g4EOFActivationLegacy   = "legacy"
 	g4EOFEventNormal        = "normal"
 	g4EOFEventRecover       = "recover_eof"
 )
@@ -171,7 +170,6 @@ type g4EOFFixtureSpec struct {
 	errorTop                  bool
 	openS3Region              bool
 	metadataActivation        bool
-	legacyActivation          bool
 }
 
 type g4EOFFixture struct {
@@ -348,8 +346,7 @@ func newG4EOFFixture(t *testing.T, spec g4EOFFixtureSpec) *g4EOFFixture {
 		token:         Token{Symbol: 0, StartByte: sourceLength, EndByte: sourceLength},
 		electionIndex: 7,
 		options: DiagnosticParserCorePrefixOptions{
-			allowEOFAcceptNoActionSiblings: spec.legacyActivation,
-			MaxDispatches:                  64,
+			MaxDispatches: 64,
 		},
 		receipt: &DiagnosticParserCoreGenericScheduler{},
 	}
@@ -1143,15 +1140,9 @@ func TestCompactEOFRecoveryMetadataRepeatedValidDeclineValid(t *testing.T) {
 	}
 }
 
-func TestCompactEOFRecoveryMetadataKeepsExplicitLegacyBypass(t *testing.T) {
-	legacy := newG4EOFFixture(t, g4EOFFixtureSpec{legacyActivation: true})
-	decision, err := exerciseCompactEOFRecoveryAdmissionForTest(legacy.scheduler, legacy.source, g4EOFRoutePublicTree)
-	if err != nil || !decision.Approved || decision.Activation != g4EOFActivationLegacy || decision.MetadataOnly {
-		t.Fatalf("legacy bypass decision=%+v err=%v", decision, err)
-	}
-
+func TestCompactEOFRecoveryMetadataStaysInactiveWithoutActivation(t *testing.T) {
 	inactive := newG4EOFFixture(t, g4EOFFixtureSpec{})
-	decision, err = exerciseCompactEOFRecoveryAdmissionForTest(inactive.scheduler, inactive.source, g4EOFRoutePublicTree)
+	decision, err := exerciseCompactEOFRecoveryAdmissionForTest(inactive.scheduler, inactive.source, g4EOFRoutePublicTree)
 	if err != nil || decision.Approved || decision.Decline || decision.Activation != g4EOFActivationNone {
 		t.Fatalf("inactive decision=%+v err=%v", decision, err)
 	}
@@ -1355,9 +1346,6 @@ func exerciseCompactEOFRecoveryAdmissionForTest(
 			return g4EOFDecision{Activation: g4EOFActivationMetadata, Decline: true, SelectedEvent: -1}, nil
 		}
 		return gateCompactEOFRecoveryAdmissionForTest(scheduler, source, g4EOFReceiptFromInternal(receipt), route), nil
-	}
-	if scheduler.options.allowEOFAcceptNoActionSiblings {
-		return g4EOFDecision{Activation: g4EOFActivationLegacy, Approved: true}, nil
 	}
 	return g4EOFDecision{Activation: g4EOFActivationNone}, nil
 }

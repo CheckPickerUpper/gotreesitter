@@ -114,8 +114,9 @@ type compactT3ExpectedOutcome struct {
 
 // compactT3RecoveryCertifiedWitnesses lists witnesses where native compact
 // recovery reaches exact structural C-oracle parity. The exact HTML artifact
-// certifies its complete class. JavaScript certifies all eight pinned recovery
-// witnesses.
+// certifies its complete class. JavaScript certifies seven of its eight pinned
+// recovery witnesses; js_log_3 resumes in a mixed shift/reduce state the
+// generic scheduler declines, so it is served by the production parser.
 var compactT3RecoveryCertifiedWitnesses = map[string]bool{
 	"html_min_a":    true,
 	"html_min_html": true,
@@ -129,7 +130,6 @@ var compactT3RecoveryCertifiedWitnesses = map[string]bool{
 	"html_log_8":    true,
 	"js_log_1":      true,
 	"js_log_2":      true,
-	"js_log_3":      true,
 	"js_log_4":      true,
 	"js_log_5":      true,
 	"js_log_6":      true,
@@ -151,7 +151,7 @@ var compactT3RecoveryCertifiedWitnesses = map[string]bool{
 //   - compact vs. the C oracle: S3 and S5 cover all ten
 //     html_erroneous_end_tag witnesses. Every witness in
 //     compactT3RecoveryCertifiedWitnesses must match the C oracle exactly.
-//     JavaScript routes all eight witnesses exactly.
+//     JavaScript routes seven of its eight witnesses exactly.
 //     Swift still has no compact recovery implementation.
 //   - production vs. the C oracle: the S1 design brief's stated gate is
 //     "the harness must pass with production serving every witness before
@@ -292,7 +292,7 @@ func TestCompactT3JavaScriptRecoveryProfileCharacterization(t *testing.T) {
 	}{
 		"js_log_1": {routed: true},
 		"js_log_2": {routed: true},
-		"js_log_3": {routed: true},
+		"js_log_3": {fallbackDetail: "did not accept EOF"},
 		"js_log_4": {routed: true},
 		"js_log_5": {routed: true},
 		"js_log_6": {routed: true},

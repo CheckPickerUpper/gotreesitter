@@ -22,7 +22,6 @@ func TestJavaScriptRetiredRecoveryAliasWithoutArtifactGrantLockedC(t *testing.T)
 func requireJavaScriptSharedRecoveryAliasLockedC(t *testing.T, source []byte) {
 	t.Helper()
 	language := *grammars.JavascriptLanguage()
-	language.CompactRecoveryTerminalAliasRules = nil
 	if language.CompactOwnedEOFRecoveryCertified {
 		t.Fatal("fixture unexpectedly uses owned EOF recovery")
 	}

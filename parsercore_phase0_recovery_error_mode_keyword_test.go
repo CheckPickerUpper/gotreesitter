@@ -78,7 +78,6 @@ func TestCompactJavaScriptErrorModeKeywordCaptureRequiresArtifact(t *testing.T) 
 func TestCompactJavaScriptSelectedAbsorbAliasUsesProductionProof(t *testing.T) {
 	t.Cleanup(func() { grammars.PurgeEmbeddedLanguageCache() })
 	lang := *grammars.JavascriptLanguage()
-	lang.CompactRecoveryTerminalAliasRules = nil
 
 	gts.ResetAdmissionCandidateCountersForTest()
 	parser := gts.NewParser(&lang)

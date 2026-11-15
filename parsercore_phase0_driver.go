@@ -88,7 +88,6 @@ type DiagnosticParserCorePrefixOptions struct {
 	freshSchedulerSession bool
 	// These acceptance options require exact artifact certification. Diagnostic
 	// callers retain the conservative false defaults.
-	allowEOFAcceptNoActionSiblings bool
 	allowMetadataEOFAcceptRecovery bool
 	allowPrimaryAcceptDerivation   bool
 	// allowCompactAcceptanceStructuralElection permits C's raw subtree
@@ -106,14 +105,6 @@ type DiagnosticParserCorePrefixOptions struct {
 	// name-keyed -- design section 7). Recovery must also be true: this
 	// option alone does not admit the fresh-full runner's recovery guard.
 	allowCompactStrategy2ErrorRegion bool
-	// allowCompactRecoverEOF permits one exact, authenticated EOF no-action
-	// lineage to publish the locked-C recover_eof ERROR root. It is separate
-	// from strategy-2 recovery and never enables S3, S4, or S5.
-	allowCompactRecoverEOF bool
-	// allowCompactStackSummaryRecovery permits the scheduler to fork one
-	// no-action head into ancestor-recovered and error-absorb lineages.
-	// Language.CompactStackSummaryRecoveryCertified is its artifact gate.
-	allowCompactStackSummaryRecovery bool
 	// allowCompactMissingTokenInsertion permits the scheduler to fork one
 	// no-action head into missing-token and error-absorb recovery lineages.
 	// Language.CompactMissingTokenInsertionCertified is its artifact gate.
@@ -2947,20 +2938,19 @@ type diagnosticParserCoreGenericScheduler struct {
 	versionLexerNoActionProof bool
 	electionIndex             int
 	noLookaheadSteps          uint8
-	// recoveryIsolation becomes true only after S4 or S5 publishes two versions.
+	// recoveryIsolation becomes true only after S5 publishes two versions.
 	// Clean parses retain the canonical scheduler fast path.
 	recoveryIsolation bool
 	// s3RegionOpened records one S3 recovery episode across this parse. A later
 	// episode starts a new C recovery election that this route cannot model.
 	s3RegionOpened bool
-	// s3ResumeState and s3ResumeSymbol record the sole strategy-2 resume. The
-	// accepted-tree audit uses them only with an exact artifact rule.
+	// s3ResumeState and s3ResumeSymbol record the sole strategy-2 resume as
+	// recovery provenance.
 	s3ResumeState  StateID
 	s3ResumeSymbol Symbol
 	s3ResumeCount  uint32
 	// selectedRecoveryAbsorbLineage records that EOF pricing selected S5's
-	// original, earlier absorb version. Materialization uses this outcome to
-	// prevent the later missing version from borrowing an absorb-resume rule.
+	// original, earlier absorb version.
 	selectedRecoveryAbsorbLineage bool
 	// s5MissingInsertions counts recovery forks created by S5. The counter
 	// bounds zero-width progress across one parse.
@@ -4309,8 +4299,7 @@ func (s *diagnosticParserCoreGenericScheduler) applyCompactEOFRecoveryAdmission(
 	before []DiagnosticParserCoreHeaderReceipt,
 	cell diagnosticParserCoreGenericCell,
 ) (handled bool, err error) {
-	if s == nil || !s.options.allowMetadataEOFAcceptRecovery ||
-		s.options.allowEOFAcceptNoActionSiblings {
+	if s == nil || !s.options.allowMetadataEOFAcceptRecovery {
 		return false, nil
 	}
 	if len(s.headers) != compactEOFRecoveryAdmissionFrontierWidth || len(s.acceptedPayloads) != 0 {
@@ -6967,14 +6956,10 @@ type parserCoreRunnerScratch struct {
 	incrementalReuse               *compactIncrementalReuseSession
 	// freshAttemptWork spans fresh retries within one profiled operation.
 	// Its caller clears this pointer after all attempts finish.
-	freshAttemptWork *compactFreshAttemptWork
-	// recoveryTerminalAliasSymbol is valid only when the exact artifact rule
-	// also set recoveryTerminalAliasCertified for this materialization.
-	recoveryTerminalAliasSymbol    Symbol
-	recoveryTerminalAliasCertified bool
-	materializationPurpose         core.MaterializationPurpose
-	acceptanceMaterialization      core.AcceptanceMaterialization[*Tree]
-	nativeProjection               *nativeProjectionWorkspace
+	freshAttemptWork          *compactFreshAttemptWork
+	materializationPurpose    core.MaterializationPurpose
+	acceptanceMaterialization core.AcceptanceMaterialization[*Tree]
+	nativeProjection          *nativeProjectionWorkspace
 	// The alternative construction workspace owns no published nodes. It is
 	// reused only by this exclusively leased runner, then cleared and bounded.
 	acceptanceComparison *parserCoreRunnerScratch
@@ -7175,7 +7160,6 @@ func (scratch *diagnosticParserCoreAcceptedLeafCoverageScratch) authenticateDire
 	entries []stackEntry,
 	children []*Node,
 	productionID uint16,
-	aliasSymbol Symbol,
 	nodesByID []*Node,
 ) {
 	if scratch == nil || parser == nil || parser.language == nil {
@@ -7196,9 +7180,9 @@ func (scratch *diagnosticParserCoreAcceptedLeafCoverageScratch) authenticateDire
 			alias = aliases[structuralChild]
 		}
 		structuralChild++
-		// A zero filter admits each nonzero alias from this production.
-		// The raw terminal and projected clone still require exact provenance.
-		if alias == 0 || (aliasSymbol != 0 && alias != aliasSymbol) || raw.symbol == alias ||
+		// Each nonzero alias from this production is admitted. The raw
+		// terminal and projected clone still require exact provenance.
+		if alias == 0 || raw.symbol == alias ||
 			uint32(raw.symbol) >= parser.language.TokenCount ||
 			nodeChildCountNoMaterialize(raw) != 0 ||
 			!scratch.hasVisibleTerminalNode(raw.startByte, raw.endByte, raw, nodesByID) {
@@ -7275,8 +7259,6 @@ func (s *parserCoreRunnerScratch) resetTreeBuffers() {
 	s.materializationBudgetScheduler = nil
 	s.materializationReferenceBytes = 0
 	s.incrementalReuse = nil
-	s.recoveryTerminalAliasSymbol = 0
-	s.recoveryTerminalAliasCertified = false
 	s.materializer.reset()
 	s.nodes = clearNodeScratch(s.nodes)
 	s.linkScratch = clearNodeScratch(s.linkScratch)
@@ -8099,10 +8081,6 @@ func materializeDiagnosticParserCoreAcceptedSelectionWithRootFinalization(compac
 	m.allowErrorRoot = allowErrorRoot
 	m.allowLexerSkippedPrefix = allowLexerSkippedPrefix
 	m.rootFinalization = rootFinalization
-	m.recoveryTerminalAlias = 0
-	if scratch != nil && scratch.recoveryTerminalAliasCertified {
-		m.recoveryTerminalAlias = scratch.recoveryTerminalAliasSymbol
-	}
 	var prebuilt func(core.SubtreeID) bool
 	if adopted {
 		prebuilt = m.prebuilt
@@ -9849,20 +9827,6 @@ func (s *diagnosticParserCoreGenericScheduler) dispatchPassActive() (*diagnostic
 					if handled {
 						return nil, nil
 					}
-					handled, s4Err := s.s4TryStackSummaryRecovery(noActionIndices[0])
-					if s4Err != nil {
-						return nil, s4Err
-					}
-					if handled {
-						return nil, nil
-					}
-					handled, eofErr := s.tryRecoverEOFAccept(noActionIndices[0])
-					if eofErr != nil {
-						return nil, eofErr
-					}
-					if handled {
-						return nil, nil
-					}
 					handled, s3Err := s.s3TryOpenErrorRegion(noActionIndices[0])
 					if s3Err != nil {
 						return nil, s3Err
@@ -9937,8 +9901,7 @@ func (s *diagnosticParserCoreGenericScheduler) dispatchPassActive() (*diagnostic
 	}
 	if acceptCell >= 0 {
 		cell := cells[acceptCell]
-		if !recoveryCompetition && !s.options.allowEOFAcceptNoActionSiblings &&
-			s.options.allowMetadataEOFAcceptRecovery &&
+		if !recoveryCompetition && s.options.allowMetadataEOFAcceptRecovery &&
 			len(s.headers) == compactEOFRecoveryAdmissionFrontierWidth &&
 			len(cells) == 1 && len(noActionIndices) == 1 {
 			handled, err := s.applyCompactEOFRecoveryAdmission(before, cell)
@@ -9959,53 +9922,13 @@ func (s *diagnosticParserCoreGenericScheduler) dispatchPassActive() (*diagnostic
 		}
 		soleAccept := len(s.headers) == 1 && len(cells) == 1 &&
 			len(noActionIndices) == 0 && cell.headerIndex == 0
-		certifiedAcceptWithDeadSiblings := s.options.allowEOFAcceptNoActionSiblings &&
-			len(s.headers) > 1 && len(cells) == 1 &&
-			len(noActionIndices) == len(s.headers)-1
 		competingRecoveryAccept := recoveryCompetition && s.headers[cell.headerIndex].isRecoveryLineage()
-		if !soleAccept && !certifiedAcceptWithDeadSiblings && !competingRecoveryAccept {
+		if !soleAccept && !competingRecoveryAccept {
 			return &diagnosticParserCoreGenericUnsupported{
 				boundary: DiagnosticParserCoreAccept, detail: "generic scheduler requires a sole homogeneous accept frontier", headerIndex: int(cell.headerIndex),
 			}, nil
 		}
-		if certifiedAcceptWithDeadSiblings {
-			// The G2 EOF-history census observes the complete frontier before
-			// acceptance canonicalization removes its no-action siblings. The
-			// default build supplies an empty inlined stub.
-			s.censusEOFAcceptHistoryFrontier(int(cell.headerIndex), noActionIndices)
-		}
-		if err := s.applyGenericAccept(before, cell); err != nil {
-			return nil, err
-		}
-		if competingRecoveryAccept {
-			return nil, nil
-		}
-		if !certifiedAcceptWithDeadSiblings {
-			return nil, nil
-		}
-		// Canonicalization preserves the accepted marker. Rebuild the drop list
-		// after acceptance so it cannot depend on stale frontier indices.
-		noActionIndices = noActionIndices[:0]
-		accepted := 0
-		for index, header := range s.headers {
-			if header.accepted {
-				accepted++
-				continue
-			}
-			noActionIndices = append(noActionIndices, index)
-		}
-		if accepted != 1 || len(noActionIndices)+1 != len(s.headers) {
-			return nil, errors.New("parser-core phase zero: certified EOF accept did not preserve one accepted head")
-		}
-		if s.options.recordDropCohortFrontiers {
-			if err := s.publishDropCohortFrontierOwned(noActionIndices); err != nil {
-				return nil, err
-			}
-		}
-		if err := s.consumeDropCohortFrontierOwned(noActionIndices); err != nil {
-			return nil, err
-		}
-		return nil, s.dropGenericNoActionHeads(noActionIndices)
+		return nil, s.applyGenericAccept(before, cell)
 	}
 	if extraCells != 0 {
 		if extraCells != len(cells) || len(cells) != len(s.headers) || len(noActionIndices) != 0 {
@@ -10048,323 +9971,6 @@ func (s *diagnosticParserCoreGenericScheduler) dispatchPassActive() (*diagnostic
 // compact-recovery-ownership.v1 section 4 and internal/parsercorephase0/
 // error_region.go's file doc comment for the mechanism this ports.
 // ---------------------------------------------------------------------------
-
-// recoverEOFAcceptAdmitted reports whether this scheduler may attempt the
-// dedicated recover_eof route. It never follows from the S3 capability.
-func (s *diagnosticParserCoreGenericScheduler) recoverEOFAcceptAdmitted() bool {
-	return s != nil && s.options.Recovery && s.options.allowCompactRecoverEOF &&
-		s.tokenSource != nil && compactRecoverEOFArtifactConfigured(s.tokenSource.language)
-}
-
-// recoverEOFAcceptHeaderTopologyEligible keeps the direct EOF package
-// separate from every ambiguity and recovery-lineage path.
-func recoverEOFAcceptHeaderTopologyEligible(header diagnosticParserCoreHeader) bool {
-	return !header.accepted && !header.shifted && !header.paused &&
-		header.recoveryRegion() == nil && !header.isRecoveryLineage() &&
-		header.altSet.Len() == 0 && !header.convergedReductionSplit &&
-		!header.resurrectionUnproved && !header.blended
-}
-
-// recoverEOFAcceptPayloadShapeEligible admits only a materializable terminal
-// for the first direct recover_eof package. Fragile reductions stay closed.
-func recoverEOFAcceptPayloadShapeEligible(compact *core.Core, payload core.SubtreeID) (core.SubtreeView, bool, error) {
-	if compact == nil {
-		return core.SubtreeView{}, false, nil
-	}
-	view, err := compact.Subtree(payload)
-	if err != nil {
-		return core.SubtreeView{}, false, err
-	}
-	if view.Extra || view.Missing || !view.Terminal || view.StartByte > view.EndByte {
-		return view, false, nil
-	}
-	materializationView, err := compact.MaterializationView(payload)
-	if err != nil {
-		return core.SubtreeView{}, false, err
-	}
-	if materializationView.Fragile {
-		return view, false, nil
-	}
-	return view, true, nil
-}
-
-// recoverEOFAcceptPriorityFree proves that the direct EOF package does not
-// shadow an earlier C recovery mechanism. The probes are read-only; Core
-// mutation starts only after this function returns true.
-func (s *diagnosticParserCoreGenericScheduler) recoverEOFAcceptPriorityFree(head core.Head) (bool, error) {
-	if s == nil || s.compact == nil || s.tokenSource == nil || s.tokenSource.language == nil {
-		return false, nil
-	}
-	state, position, err := s.compact.Boundary(head)
-	if err != nil {
-		return false, err
-	}
-	tokenCount := Symbol(s.tokenSource.language.TokenCount)
-	for symbol := Symbol(0); symbol < tokenCount; symbol++ {
-		row, rowErr := s.compact.Actions(state, core.Symbol(symbol))
-		if rowErr != nil {
-			return false, rowErr
-		}
-		for ordinal := 0; ordinal < row.Len(); ordinal++ {
-			if row.At(ordinal).Type == core.ActionReduce {
-				return false, nil
-			}
-		}
-	}
-	missingOpportunity, missingErr := s.s3MissingTokenOpportunityExists(state)
-	if missingErr != nil {
-		return false, missingErr
-	}
-	if missingOpportunity {
-		return false, nil
-	}
-	candidates, summaryErr := s.compact.StackSummaryCandidates(head, cRecoverMaxSummaryDepth)
-	if summaryErr != nil {
-		return false, summaryErr
-	}
-	for _, candidate := range candidates {
-		if candidate.ByteOffset() >= position {
-			continue
-		}
-		recoverable, recoverableErr := s.compact.StackSummaryCandidateRecoverable(candidate)
-		if recoverableErr != nil {
-			return false, recoverableErr
-		}
-		if !recoverable {
-			continue
-		}
-		row, rowErr := s.compact.Actions(candidate.State(), core.Symbol(0))
-		if rowErr != nil {
-			return false, rowErr
-		}
-		if row.Len() != 0 {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
-func compactRecoverEOFRecoveryWork(s *diagnosticParserCoreGenericScheduler) uint64 {
-	if s == nil {
-		return math.MaxUint64
-	}
-	values := [...]uint64{
-		s.work.StackSummaryRecoveryForks,
-		s.work.RecoveryLineageSelections,
-		s.work.RecoveryLineageRetirements,
-		s.work.RecoveryAmbiguityForks,
-		s.work.RecoveryCondensePasses,
-		s.work.RecoveryVersionCapDrops,
-		s.work.ReductionPauses,
-		s.work.NoActionDrops,
-		s.work.PerVersionLexRequests,
-		s.work.PerVersionLexRestores,
-		s.work.PerVersionLexPublications,
-		s.work.PerVersionLexAcceptedRaggedSpans,
-		s.work.PerVersionLexViabilityDrops,
-		uint64(s.s5MissingInsertions),
-		uint64(s.s3ResumeCount),
-	}
-	var total uint64
-	for _, value := range values {
-		if math.MaxUint64-total < value {
-			return math.MaxUint64
-		}
-		total += value
-	}
-	for _, active := range []bool{
-		s.s3RegionOpened,
-		s.recoveryIsolation,
-		s.selectedRecoveryAbsorbLineage,
-	} {
-		if active {
-			if total == math.MaxUint64 {
-				return total
-			}
-			total++
-		}
-	}
-	return total
-}
-
-func (s *diagnosticParserCoreGenericScheduler) recoverEOFAcceptArtifactEligible(
-	header diagnosticParserCoreHeader,
-	view core.SubtreeView,
-) (bool, error) {
-	if s == nil || s.compact == nil || s.tokenSource == nil || s.tokenSource.language == nil {
-		return false, nil
-	}
-	language := s.tokenSource.language
-	receipt := language.CompactRecoverEOFArtifactReceipt
-	blob, blobOK := language.GrammarBlobSHA256()
-	if !blobOK || receipt.BlobSHA256 == ([32]byte{}) || receipt.BlobSHA256 != blob ||
-		!compactRecoverEOFArtifactConfigured(language) || !s.compact.TableIdentityMatches() {
-		return false, nil
-	}
-	state, offset, err := s.compact.Boundary(header.head)
-	if err != nil {
-		return false, err
-	}
-	if StateID(state) != receipt.EOFState || offset != receipt.EOFByteOffset ||
-		Symbol(view.Symbol) != receipt.TerminalSymbol {
-		return false, nil
-	}
-	work := s.work
-	if work.Passes != receipt.Passes || work.Elections != receipt.Elections ||
-		work.ActionLookups != receipt.ActionLookups || work.Dispatches != receipt.Dispatches ||
-		work.OrdinaryShifts != receipt.OrdinaryShifts ||
-		work.OrdinaryCohorts != receipt.OrdinaryCohorts || work.ExtraShifts != receipt.ExtraShifts ||
-		work.ExtraCohorts != receipt.ExtraCohorts || work.Reductions != receipt.Reductions ||
-		work.Conflicts != receipt.Conflicts || work.ConflictActions != receipt.ConflictActions ||
-		work.Forks != receipt.Forks || work.RepetitionFolds != receipt.RepetitionFolds ||
-		compactRecoverEOFRecoveryWork(s) != receipt.RecoveryWork ||
-		work.NoActionDrops != receipt.NoActionDrops || work.ReductionPauses != receipt.ReductionPauses ||
-		work.Accepts != receipt.Accepts || work.Canonicalizations != receipt.Canonicalizations ||
-		work.PeakHeaders != receipt.PeakHeaders || work.Overflow {
-		return false, nil
-	}
-	return true, nil
-}
-
-// recoverEOFAcceptPayloads validates the sole no-action path before it is
-// replaced by a synthetic ERROR root. Keep extra and missing nodes out of
-// this focused package. Core receives the original path payloads because EOF
-// admission does not reconstruct reductions that the parser did not perform.
-func (s *diagnosticParserCoreGenericScheduler) recoverEOFAcceptPayloads(
-	index int,
-) (core.Head, []core.SubtreeID, uint32, uint32, bool, error) {
-	if s == nil || index < 0 || index >= len(s.headers) || len(s.headers) != 1 ||
-		s.tokenSource == nil || s.tokenSource.language == nil ||
-		s.options.materializationParser == nil || !s.options.materializationContextSet {
-		return core.Head{}, nil, 0, 0, false, nil
-	}
-	if s.token.Symbol != 0 || s.token.StartByte != s.token.EndByte ||
-		s.token.Missing || s.token.NoLookahead || s.token.ExternalScannerToken {
-		return core.Head{}, nil, 0, 0, false, nil
-	}
-	header := s.headers[index]
-	// Recover-eof admission owns one deterministic derivation only. Any
-	// alternative-set, split, resurrection, or blended provenance means the
-	// head came through a condensation or ambiguity path that this route does
-	// not reproduce. Decline before reading or mutating the compact graph.
-	if !recoverEOFAcceptHeaderTopologyEligible(header) {
-		return core.Head{}, nil, 0, 0, false, nil
-	}
-	paths, err := compactDerivationsForAcceptance(s.compact, header.head)
-	if err != nil {
-		return core.Head{}, nil, 0, 0, false, nil
-	}
-	if len(paths) != 1 || len(paths[0].Payloads) == 0 ||
-		len(paths[0].Payloads) > compactEOFRecoveryAdmissionMaxTopPayloads {
-		return core.Head{}, nil, 0, 0, false, nil
-	}
-	payloads := paths[0].Payloads
-	if len(payloads) != 1 {
-		return core.Head{}, nil, 0, 0, false, nil
-	}
-	priorityFree, priorityErr := s.recoverEOFAcceptPriorityFree(header.head)
-	if priorityErr != nil {
-		return core.Head{}, nil, 0, 0, false, priorityErr
-	}
-	if !priorityFree {
-		return core.Head{}, nil, 0, 0, false, nil
-	}
-	var firstStart, lastEnd uint32
-	var terminalView core.SubtreeView
-	for payloadIndex, payload := range payloads {
-		view, shapeEligible, viewErr := recoverEOFAcceptPayloadShapeEligible(s.compact, payload)
-		if viewErr != nil {
-			return core.Head{}, nil, 0, 0, false, viewErr
-		}
-		terminalView = view
-		if !shapeEligible {
-			return core.Head{}, nil, 0, 0, false, nil
-		}
-		if payloadIndex == 0 {
-			firstStart = view.StartByte
-		} else {
-			previous, previousErr := s.compact.Subtree(payloads[payloadIndex-1])
-			if previousErr != nil {
-				return core.Head{}, nil, 0, 0, false, previousErr
-			}
-			if view.StartByte < previous.EndByte {
-				return core.Head{}, nil, 0, 0, false, nil
-			}
-		}
-		lastEnd = view.EndByte
-	}
-	source := s.options.materializationSource
-	if s.token.StartByte != uint32(len(source)) ||
-		uint64(len(source)) > uint64(^uint32(0)) || firstStart > uint32(len(source)) ||
-		lastEnd > uint32(len(source)) || firstStart != firstNonTriviaByteStart(source) ||
-		lastEnd < firstStart ||
-		!parserTailAllowsCleanAcceptance(source, lastEnd, uint32(len(source)), nil,
-			s.options.materializationParser.lineContinuationEscapeByte()) {
-		return core.Head{}, nil, 0, 0, false, nil
-	}
-	artifactEligible, artifactErr := s.recoverEOFAcceptArtifactEligible(header, terminalView)
-	if artifactErr != nil {
-		return core.Head{}, nil, 0, 0, false, artifactErr
-	}
-	if !artifactEligible {
-		return core.Head{}, nil, 0, 0, false, nil
-	}
-	return header.head, payloads, firstStart, lastEnd, true, nil
-}
-
-// tryRecoverEOFAccept publishes one exact recover_eof ERROR root. The Core
-// mutation and scheduler counters commit together; unsupported topologies
-// return false so the existing S3 and final-decline ladder remains intact.
-func (s *diagnosticParserCoreGenericScheduler) tryRecoverEOFAccept(index int) (bool, error) {
-	if !s.recoverEOFAcceptAdmitted() {
-		return false, nil
-	}
-	selectedHead, payloads, startByte, endByte, eligible, err := s.recoverEOFAcceptPayloads(index)
-	if err != nil || !eligible {
-		return false, err
-	}
-	dispatchesBefore, workBefore, epochProgressBefore := s.dispatches, s.work, s.epochProgress
-	if err := s.reserveDispatches(1); err != nil {
-		return false, err
-	}
-	recoveryCost, _, costErr := s.recoveryOutputCostFunc()
-	if costErr != nil {
-		return false, costErr
-	}
-	var recovered core.Head
-	var root core.SubtreeID
-	apply := func(owner core.SchedulerTransactionToken) error {
-		var applyErr error
-		recovered, root, applyErr = s.compact.RecoverEOFAcceptWithCostOwned(
-			owner, selectedHead, payloads, startByte, endByte, recoveryCost,
-		)
-		return applyErr
-	}
-	var applyErr error
-	if s.freshSessionOwner != nil {
-		applyErr = apply(*s.freshSessionOwner)
-	} else {
-		applyErr = s.compact.ApplySchedulerAtomic(apply)
-	}
-	if applyErr != nil {
-		s.dispatches, s.work, s.epochProgress = dispatchesBefore, workBefore, epochProgressBefore
-		return false, applyErr
-	}
-	header := &s.headers[index]
-	header.head = recovered
-	s.markAccepted(header)
-	header.shifted = false
-	header.paused = false
-	header.clearZeroWidthReopened()
-	s.acceptedHead = recovered
-	s.acceptedPayloads = append(s.acceptedPayloads[:0], root)
-	s.acceptedRootFinalization = diagnosticParserCoreFinalizeRecoverEOF
-	s.epochProgress = true
-	s.work.add(&s.work.Accepts, 1)
-	s.work.add(&s.work.RecoverEOFAccepts, 1)
-	s.work.add(&s.work.Dispatches, 1)
-	return true, nil
-}
 
 // s3ErrorRegionAdmitted reports whether native S3 recovery may attempt to
 // own a true no-action point for the current parse instead of declining.
@@ -10575,18 +10181,6 @@ func (s *diagnosticParserCoreGenericScheduler) s3CloseInProgressProductions(head
 	return s.s3CloseInProgressProductionsMode(head, false)
 }
 
-func (s *diagnosticParserCoreGenericScheduler) s3MixedClosureStateAdmitted(state core.StateID) bool {
-	if s == nil || s.tokenSource == nil || s.tokenSource.language == nil {
-		return false
-	}
-	for _, certified := range s.tokenSource.language.CompactS3MixedShiftReduceClosureStates {
-		if core.StateID(certified) == state {
-			return true
-		}
-	}
-	return false
-}
-
 func (s *diagnosticParserCoreGenericScheduler) s3CloseInProgressProductionsMode(
 	head core.Head,
 	rejectMixedShiftReduce bool,
@@ -10641,8 +10235,7 @@ func (s *diagnosticParserCoreGenericScheduler) s3CloseInProgressProductionsMode(
 			}
 		}
 		if hasShift {
-			if rejectMixedShiftReduce && (reduceCandidates != 0 || sawUnmodeledReduce) &&
-				!s.s3MixedClosureStateAdmitted(state) {
+			if rejectMixedShiftReduce && (reduceCandidates != 0 || sawUnmodeledReduce) {
 				return current, changed, false, nil
 			}
 			// A real dispatchable action exists here regardless of what else
@@ -10683,165 +10276,6 @@ func (s *diagnosticParserCoreGenericScheduler) s5MissingTokenAdmitted() bool {
 		s.options.allowCompactMissingTokenInsertion &&
 		s.options.allowCompactStrategy2ErrorRegion &&
 		s.options.allowCompactRecoveryLineageSelection
-}
-
-// s4StackSummaryRecoveryAdmitted reports whether the complete ancestor-
-// recovery competition is available. S4 needs the summary, absorb, and
-// acceptance capabilities.
-func (s *diagnosticParserCoreGenericScheduler) s4StackSummaryRecoveryAdmitted() bool {
-	return s.options.Recovery &&
-		s.options.allowCompactStackSummaryRecovery &&
-		s.options.allowCompactStrategy2ErrorRegion &&
-		s.options.allowCompactRecoveryLineageSelection
-}
-
-// s4TryStackSummaryRecovery forks one no-action head into two versions. The
-// original version absorbs the real token through S3. Its copied sibling
-// recovers to the first actionable stack-summary entry. This order matches
-// C's version list: strategy 1 appends its fork after the absorbing version.
-func (s *diagnosticParserCoreGenericScheduler) s4TryStackSummaryRecovery(index int) (handled bool, err error) {
-	if !s.s4StackSummaryRecoveryAdmitted() || len(s.headers) != 1 || index != 0 {
-		return false, nil
-	}
-	original := s.headers[index]
-	if original.recoveryRegion() != nil || s.token.Missing || s.token.NoLookahead ||
-		s.token.Symbol == 0 || s.token.Symbol == errorSymbol {
-		return false, nil
-	}
-	if s.nextSeq == math.MaxUint64 {
-		return false, errors.New("parser-core phase zero: recovery fork creation sequence overflow")
-	}
-
-	// C closes productions before it records and scans the stack summary.
-	// Keep the original header unchanged unless the complete fork succeeds.
-	closedHead, closedChanged, closeOK, closeErr := s.s3CloseInProgressProductions(original.head)
-	if closeErr != nil {
-		return false, closeErr
-	}
-	if !closeOK {
-		return false, nil
-	}
-	scanHead := original.head
-	if closedChanged {
-		scanHead = closedHead
-	}
-	_, position, boundaryErr := s.compact.Boundary(scanHead)
-	if boundaryErr != nil {
-		return false, boundaryErr
-	}
-
-	electionSymbol := s.token.Symbol
-	if relexed, relexOK := s.s3ErrorModeRelex(s.token.StartByte); relexOK && relexed.Symbol != errorSymbol {
-		electionSymbol = relexed.Symbol
-	}
-	candidates, summaryErr := s.compact.StackSummaryCandidates(scanHead, cRecoverMaxSummaryDepth)
-	if summaryErr != nil {
-		return false, summaryErr
-	}
-	var elected core.StackSummaryCandidate
-	found := false
-	for candidateIndex, candidate := range candidates {
-		if candidateIndex&63 == 0 {
-			if pollErr := s.pollStopControl(); pollErr != nil {
-				return false, pollErr
-			}
-		}
-		// C skips summary entries at the current group position. This first-fork
-		// unit has no older competing version to apply C's better-version gate to.
-		if candidate.ByteOffset() == position || candidate.ByteOffset() > position {
-			continue
-		}
-		recoverable, recoverableErr := s.compact.StackSummaryCandidateRecoverable(candidate)
-		if recoverableErr != nil {
-			return false, recoverableErr
-		}
-		if !recoverable {
-			continue
-		}
-		row, rowErr := s.compact.Actions(candidate.State(), core.Symbol(electionSymbol))
-		if rowErr != nil {
-			return false, rowErr
-		}
-		if row.Len() == 0 {
-			continue
-		}
-		elected = candidate
-		found = true
-		break
-	}
-	if !found {
-		return false, nil
-	}
-	recoveryBaseline, baselineOK, baselineErr := s.recoveryNodeBaselineForHead(scanHead)
-	if baselineErr != nil {
-		return false, baselineErr
-	}
-	if !baselineOK {
-		return false, nil
-	}
-	recoveryGroup := s.nextSeq
-
-	absorbHeader := original
-	absorbHeader.head = scanHead
-	absorbHeader.paused = false
-	absorbHeader.shifted = false
-	absorbHeader.clearZeroWidthReopened()
-	s.invalidateVerifierHeaderBinding()
-	s.headers[index] = absorbHeader
-	recoveredHeader := absorbHeader
-	recoveredHeader.creationSeq = s.nextSeq
-	restore := func() {
-		s.invalidateVerifierHeaderBinding()
-		clear(s.headers)
-		s.headers = s.headers[:1]
-		s.headers[0] = original
-	}
-
-	absorbed, absorbErr := s.s3TryOpenErrorRegionWithAlternatives(index, true)
-	if absorbErr != nil {
-		restore()
-		return false, absorbErr
-	}
-	if !absorbed || s.headers[index].recoveryRegion() == nil || !s.headers[index].shifted {
-		restore()
-		return false, nil
-	}
-	recoveryCost, _, costErr := s.recoveryOutputCostFunc()
-	if costErr != nil {
-		restore()
-		return false, costErr
-	}
-
-	var recoveredHead core.Head
-	recover := func(owner core.SchedulerTransactionToken) error {
-		var recoverErr error
-		recoveredHead, recoverErr = s.compact.RecoverToAncestorStateWithCostOwned(owner, elected, recoveryCost)
-		return recoverErr
-	}
-	if s.freshSessionOwner != nil {
-		err = recover(*s.freshSessionOwner)
-	} else {
-		err = s.compact.ApplySchedulerAtomic(recover)
-	}
-	if err != nil {
-		restore()
-		return false, err
-	}
-	recoveredHeader.head = recoveredHead
-	recoveredHeader.closeRecoveryRegion()
-	recoveredHeader.shifted = false
-	recoveredHeader.clearZeroWidthReopened()
-	s.headers[index].publishRecoveryCondenseState(recoveryGroup, 0, recoveryBaseline, true)
-	recoveredHeader.publishRecoveryCondenseState(0, 0, recoveryBaseline, true)
-	recoveredHeader.clearAcceptanceGroup()
-	s.headers[index].markRecoveryLineage()
-	recoveredHeader.markRecoveryLineage()
-	s.invalidateVerifierHeaderBinding()
-	s.headers = append(s.headers, recoveredHeader)
-	s.recoveryIsolation = true
-	s.nextSeq++
-	s.work.add(&s.work.StackSummaryRecoveryForks, 1)
-	return true, nil
 }
 
 // s5TryMissingTokenInsertion selects the artifact-certified S5 implementation.

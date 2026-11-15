@@ -855,3 +855,82 @@ func TestRecoveryCanonicalizationKeepsMarkedOwnersSeparate(t *testing.T) {
 		t.Fatalf("ordinary canonicalization retained %d heads, want 1", len(ordinary))
 	}
 }
+
+// s3ErrorEntryTable is a three-shift table whose state 1 accepts symbols 2,
+// 4 and 5, so a head that shifted symbol 2 has no action for symbol 4 until
+// S3 opens an error region.
+type s3ErrorEntryTable struct{}
+
+// Actions returns state 1's shifts and an empty row everywhere else.
+func (s3ErrorEntryTable) Actions(state core.StateID, symbol core.Symbol) (core.ActionRow, error) {
+	var actions []core.Action
+	switch {
+	case state == 1 && symbol == 2:
+		actions = []core.Action{{Type: core.ActionShift, State: 2}}
+	case state == 1 && symbol == 4:
+		actions = []core.Action{{Type: core.ActionShift, State: 4}}
+	case state == 1 && symbol == 5:
+		actions = []core.Action{{Type: core.ActionShift, State: 5}}
+	}
+	return core.NewActionRow(actions, false), nil
+}
+
+// Goto reports no goto targets; the table has no reductions.
+func (s3ErrorEntryTable) Goto(core.StateID, core.Symbol) (core.StateID, error) {
+	return 0, nil
+}
+
+// ProductionFields reports no field maps.
+func (s3ErrorEntryTable) ProductionFields(uint16, int) ([]core.FieldMapEntry, error) {
+	return nil, nil
+}
+
+// ProductionAliases reports no alias sequences.
+func (s3ErrorEntryTable) ProductionAliases(uint16, int) ([]core.Symbol, error) {
+	return nil, nil
+}
+
+// TestS3ErrorEntryPublishesCurrentVisibleNodeBaseline proves that opening an
+// S3 error region records the visible node count the head had before it.
+func TestS3ErrorEntryPublishesCurrentVisibleNodeBaseline(t *testing.T) {
+	compact, err := core.New(s3ErrorEntryTable{}, core.Limits{MaxDerivations: 8, MaxPopPaths: 8})
+	if err != nil {
+		t.Fatal(err)
+	}
+	seed, err := compact.Seed(core.StateID(1), 0)
+	if err != nil {
+		t.Fatalf("Seed: %v", err)
+	}
+	head, err := compact.Shift(seed, core.Symbol(2), 0, core.Token{
+		Symbol: 2, StartByte: 0, EndByte: 1,
+	}, core.ForkOrder{})
+	if err != nil {
+		t.Fatalf("Shift: %v", err)
+	}
+	scheduler := &diagnosticParserCoreGenericScheduler{
+		compact: compact,
+		tokenSource: &dfaTokenSource{
+			language: &Language{TokenCount: 5, SymbolCount: 5},
+			lexer:    &Lexer{source: []byte("a?")},
+		},
+		headers: []diagnosticParserCoreHeader{{head: head, creationSeq: 3}},
+		token:   Token{Symbol: 4, StartByte: 1, EndByte: 2},
+		nextSeq: 10,
+		options: DiagnosticParserCorePrefixOptions{
+			Recovery:                             true,
+			materializationSource:                []byte("a?"),
+			allowCompactStrategy2ErrorRegion:     true,
+			allowCompactRecoveryLineageSelection: true,
+		},
+	}
+	handled, err := scheduler.s3TryOpenErrorRegionWithAlternatives(0, true)
+	if err != nil {
+		t.Fatalf("s3TryOpenErrorRegionWithAlternatives: %v", err)
+	}
+	if !handled || scheduler.headers[0].recoveryRegion() == nil {
+		t.Fatal("standalone S3 did not open its error region")
+	}
+	if baseline, set := scheduler.headers[0].recoveryNodeBaseline(); !set || baseline != 1 {
+		t.Fatalf("S3 baseline=%d/%t, want one visible shifted node", baseline, set)
+	}
+}

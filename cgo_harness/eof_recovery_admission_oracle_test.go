@@ -78,11 +78,7 @@ func TestEOFRecoveryAdmissionUsesLockedCEventsAndPublishedTree(t *testing.T) {
 				t.Fatalf("load %s Go grammar", languageName)
 			}
 			goLanguage := entry.Language()
-			if goLanguage.CompactEOFAcceptNoActionSiblingsCertified {
-				t.Error("loaded profile still sets the legacy EOF sibling bypass")
-			}
 			candidateLanguage := *goLanguage
-			candidateLanguage.CompactEOFAcceptNoActionSiblingsCertified = false
 			gotreesitter.EOFRecoveryAdmissionCensusReset()
 			routedBefore, fallbackBefore := gotreesitter.AdmissionCandidateCounters()
 			goParser := gotreesitter.NewParser(&candidateLanguage)

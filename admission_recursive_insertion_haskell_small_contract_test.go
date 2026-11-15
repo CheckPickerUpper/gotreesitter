@@ -19,7 +19,6 @@ import (
 type recursiveInsertionProfileExpectation struct {
 	grammarBlobSHA256            string
 	convergedReductionSplitDrops bool
-	eofAcceptNoActionSiblings    bool
 	primaryAcceptanceDerivation  bool
 	exactStackNodeEquivalence    bool
 	strategy2ErrorRegion         bool
@@ -53,7 +52,6 @@ type recursiveInsertionProfileSnapshot struct {
 	grammarBlobSHA256            [32]byte
 	grammarBlobSHA256OK          bool
 	convergedReductionSplitDrops bool
-	eofAcceptNoActionSiblings    bool
 	primaryAcceptanceDerivation  bool
 	exactStackNodeEquivalence    bool
 	strategy2ErrorRegion         bool
@@ -211,7 +209,6 @@ func recursiveInsertionProfile(lang *gts.Language) recursiveInsertionProfileSnap
 		grammarBlobSHA256:            grammarBlobSHA256,
 		grammarBlobSHA256OK:          grammarBlobSHA256OK,
 		convergedReductionSplitDrops: lang.CompactConvergedReductionSplitDropsCertified,
-		eofAcceptNoActionSiblings:    lang.CompactEOFAcceptNoActionSiblingsCertified,
 		primaryAcceptanceDerivation:  lang.CompactPrimaryAcceptanceDerivationCertified,
 		exactStackNodeEquivalence:    lang.ExactStackNodeEquivalenceCertified,
 		strategy2ErrorRegion:         lang.CompactStrategy2ErrorRegionCertified,
@@ -225,7 +222,6 @@ func requireRecursiveInsertionProfile(t testing.TB, want recursiveInsertionRealC
 		t.Fatalf("grammar blob digest=%x (present=%t), want %s", got.grammarBlobSHA256, got.grammarBlobSHA256OK, want.profile.grammarBlobSHA256)
 	}
 	if got.convergedReductionSplitDrops != want.profile.convergedReductionSplitDrops ||
-		got.eofAcceptNoActionSiblings != want.profile.eofAcceptNoActionSiblings ||
 		got.primaryAcceptanceDerivation != want.profile.primaryAcceptanceDerivation ||
 		got.exactStackNodeEquivalence != want.profile.exactStackNodeEquivalence ||
 		got.strategy2ErrorRegion != want.profile.strategy2ErrorRegion ||

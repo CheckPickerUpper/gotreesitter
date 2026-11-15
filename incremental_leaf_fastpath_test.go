@@ -37,9 +37,8 @@ func TestSnapshotTokenSourceStateUnsupportedType(t *testing.T) {
 
 func TestTokenInvariantLeafEditRejectsMarkedCompactRecoverEOF(t *testing.T) {
 	lang := &Language{
-		Name:                       "yaml",
-		CompactRecoverEOFCertified: true,
-		SymbolNames:                []string{"ERROR", "string_scalar"},
+		Name:        "yaml",
+		SymbolNames: []string{"ERROR", "string_scalar"},
 	}
 	child := &Node{symbol: 1, startByte: 0, endByte: 1}
 	root := &Node{

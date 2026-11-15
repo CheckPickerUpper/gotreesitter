@@ -85,7 +85,6 @@ func TestPackage3PHPRecoveredRootLockedC(t *testing.T) {
 	language.CompactMissingTokenInsertionCertified = true
 	language.CompactS5EOFMissingInsertionCertified = true
 	language.CompactFaithfulS5RecoveryCertified = true
-	language.CompactStackSummaryRecoveryCertified = true
 	language.CompactPrimaryAcceptanceDerivationCertified = true
 	language.CompactAcceptanceStructuralElectionCertified = true
 	language.CompactRecoveryTrailingLineageRetirementCertified = true

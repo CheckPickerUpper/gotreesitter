@@ -206,7 +206,7 @@ func TestDiagnosticParserCoreAcceptedLeafCoverageAcceptsAuthenticatedTerminalAli
 	nodesByID := make([]*Node, 2)
 	nodesByID[1] = raw
 	coverage.authenticateDirectTerminalAliases(
-		parser, []stackEntry{newStackEntryNode(0, raw)}, []*Node{root}, 1, Symbol(101), nodesByID,
+		parser, []stackEntry{newStackEntryNode(0, raw)}, []*Node{root}, 1, nodesByID,
 	)
 	if _, _, gapped, err := diagnosticParserCoreAcceptedTreeLeafCoverageGap(root, []byte("x"), 0, 1, 100, &coverage, nodesByID, nil); err != nil || gapped {
 		t.Fatalf("terminal alias audit err=%v gapped=%t, want complete", err, gapped)
@@ -232,7 +232,7 @@ func TestDiagnosticParserCoreAcceptedLeafCoverageRejectsUnrelatedTerminalAlias(t
 	nodesByID := make([]*Node, 2)
 	nodesByID[1] = raw
 	coverage.authenticateDirectTerminalAliases(
-		parser, []stackEntry{newStackEntryNode(0, raw)}, []*Node{authenticated}, 1, Symbol(101), nodesByID,
+		parser, []stackEntry{newStackEntryNode(0, raw)}, []*Node{authenticated}, 1, nodesByID,
 	)
 	if _, _, gapped, err := diagnosticParserCoreAcceptedTreeLeafCoverageGap(unrelated, []byte("x"), 0, 1, 100, &coverage, nodesByID, nil); err != nil || !gapped {
 		t.Fatalf("unrelated terminal alias audit err=%v gapped=%t, want gapped", err, gapped)
@@ -275,7 +275,7 @@ func TestDiagnosticParserCoreAcceptedLeafCoverageProductionAliases(t *testing.T)
 			case "wrong_production":
 				production = 0
 			}
-			coverage.authenticateDirectTerminalAliases(parser, []stackEntry{newStackEntryNode(0, raw)}, children, production, 0, nodesByID)
+			coverage.authenticateDirectTerminalAliases(parser, []stackEntry{newStackEntryNode(0, raw)}, children, production, nodesByID)
 			if got := coverage.hasAuthenticatedAlias(clone); got != (name == "valid") {
 				t.Fatalf("production alias authenticated=%t", got)
 			}

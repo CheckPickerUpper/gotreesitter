@@ -1,7 +1,6 @@
 package grammarruntime
 
 import (
-	"slices"
 	"testing"
 
 	gotreesitter "github.com/odvcencio/gotreesitter"
@@ -70,46 +69,6 @@ func TestHTMLProfileCertifiesCompleteCompactRecovery(t *testing.T) {
 	}
 }
 
-func TestYAMLProfileCertifiesRecoverEOFArtifact(t *testing.T) {
-	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
-	lang := YamlLanguage()
-	if !lang.CompactRecoverEOFCertified {
-		t.Fatal("the YAML profile did not attach recover_eof certification")
-	}
-	wantArtifact := gotreesitter.CompactRecoverEOFArtifactReceipt{
-		BlobSHA256:        mustRuntimeProfileSHA256("be6bd2f7c9d14160d8f74b29d63dc9a9294bc03ac1f1c4bde9522273f7c87b46"),
-		TerminalSymbol:    26,
-		EOFState:          189,
-		EOFByteOffset:     1,
-		Passes:            2,
-		Elections:         2,
-		ActionLookups:     2,
-		Dispatches:        1,
-		OrdinaryShifts:    1,
-		OrdinaryCohorts:   0,
-		ExtraShifts:       0,
-		ExtraCohorts:      0,
-		Reductions:        0,
-		Conflicts:         0,
-		ConflictActions:   0,
-		Forks:             0,
-		RepetitionFolds:   0,
-		RecoveryWork:      0,
-		NoActionDrops:     0,
-		ReductionPauses:   0,
-		Accepts:           0,
-		Canonicalizations: 1,
-		PeakHeaders:       1,
-	}
-	if lang.CompactRecoverEOFArtifactReceipt != wantArtifact {
-		t.Fatalf("YAML recover_eof artifact receipt=%+v, want %+v", lang.CompactRecoverEOFArtifactReceipt, wantArtifact)
-	}
-	if lang.CompactStrategy2ErrorRegionCertified || lang.CompactStackSummaryRecoveryCertified ||
-		lang.CompactMissingTokenInsertionCertified {
-		t.Fatal("the YAML recover_eof profile enabled another recovery mechanism")
-	}
-}
-
 func TestJavaScriptProfileCertifiesCompactRecoveryFrontier(t *testing.T) {
 	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
 	lang := JavascriptLanguage()
@@ -118,23 +77,11 @@ func TestJavaScriptProfileCertifiesCompactRecoveryFrontier(t *testing.T) {
 		!lang.CompactRecoveryErrorModeKeywordCaptureCertified {
 		t.Fatal("the JavaScript profile did not attach its compact recovery capabilities")
 	}
-	if !slices.Equal(lang.CompactS3MixedShiftReduceClosureStates, []gotreesitter.StateID{1042}) {
-		t.Fatalf("mixed S3 closure states=%v, want [1042]", lang.CompactS3MixedShiftReduceClosureStates)
-	}
 	if lang.CompactFaithfulS5RecoveryCertified {
 		t.Fatal("the JavaScript profile unexpectedly enabled the Scala S5 route")
 	}
 	if lang.CompactS5EOFMissingInsertionCertified {
 		t.Fatal("the JavaScript profile unexpectedly enabled EOF S5 missing insertion")
-	}
-	wantAliases := []gotreesitter.CompactRecoveryTerminalAliasRule{
-		{ResumeState: 20, ResumeSymbol: 54, AliasSymbol: 261},
-		{ResumeState: 231, ResumeSymbol: 85, AliasSymbol: 261},
-		{ResumeState: 1042, ResumeSymbol: 129, AliasSymbol: 261},
-		{ResumeState: 1367, ResumeSymbol: 7, AliasSymbol: 261},
-	}
-	if !slices.Equal(lang.CompactRecoveryTerminalAliasRules, wantAliases) {
-		t.Fatalf("terminal alias rules=%+v, want %+v", lang.CompactRecoveryTerminalAliasRules, wantAliases)
 	}
 }
 
@@ -149,9 +96,6 @@ func TestScalaProfileCertifiesPackageTwoRecovery(t *testing.T) {
 		!lang.CompactRecoveryTrailingLineageRetirementCertified ||
 		!lang.CompactRecoveryErrorModeKeywordCaptureCertified {
 		t.Fatal("the Scala profile did not attach its package-two recovery capabilities")
-	}
-	if lang.CompactStackSummaryRecoveryCertified || lang.CompactRecoverEOFCertified {
-		t.Fatal("the Scala package-two profile enabled a later recovery package")
 	}
 }
 
@@ -225,7 +169,9 @@ func TestBuiltinRuntimeProfilesStayNarrow(t *testing.T) {
 	// The locked fresh set improves from 3/4 to 4/4 without counter changes.
 	// 60 adds TSX's exact-blob conflict-action priority grant (#1443),
 	// without enabling its broader packed-reduction transaction ordering.
-	if got, want := len(builtinLanguageRuntimeProfiles), 60; got != want {
+	// 57 = the prior 60 less YAML's recover_eof entry and the empty HTTP and
+	// Robot entries.
+	if got, want := len(builtinLanguageRuntimeProfiles), 57; got != want {
 		t.Fatalf("builtinLanguageRuntimeProfiles has %d entries, want %d", got, want)
 	}
 	lang := &gotreesitter.Language{ExternalScanner: KotlinExternalScanner{}}
@@ -247,9 +193,6 @@ func TestBuiltinRuntimeProfilesStayNarrow(t *testing.T) {
 	if lang.CompactConvergedReductionSplitDropsCertified {
 		t.Fatal("unknown runtime profile enabled compact converged-split drops")
 	}
-	if lang.CompactEOFAcceptNoActionSiblingsCertified {
-		t.Fatal("unknown runtime profile enabled compact EOF sibling drops")
-	}
 	if lang.CompactPrimaryAcceptanceDerivationCertified {
 		t.Fatal("unknown runtime profile enabled compact primary derivation selection")
 	}
@@ -262,9 +205,6 @@ func TestBuiltinRuntimeProfilesStayNarrow(t *testing.T) {
 	if lang.CompactPackedGSSVersionOrderCertified {
 		t.Fatal("unknown runtime profile enabled packed GSS version ordering")
 	}
-	if lang.CompactRecoverEOFCertified {
-		t.Fatal("unknown runtime profile enabled recover_eof acceptance")
-	}
 	if lang.CompactRecoveryPlainFirstCertified {
 		t.Fatal("unknown runtime profile enabled compact plain-first recovery")
 	}
@@ -273,9 +213,6 @@ func TestBuiltinRuntimeProfilesStayNarrow(t *testing.T) {
 	}
 	if lang.CompactRecoveryErrorModeKeywordCaptureCertified {
 		t.Fatal("unknown runtime profile enabled compact error-mode keyword capture")
-	}
-	if len(lang.CompactRecoveryTerminalAliasRules) != 0 {
-		t.Fatal("unknown runtime profile attached compact recovery terminal aliases")
 	}
 	if lang.LineContinuationEscapeByte != 0 {
 		t.Fatalf("unknown runtime profile set a line-continuation escape byte: %q", lang.LineContinuationEscapeByte)
@@ -289,56 +226,6 @@ func TestRuntimeProfileSymbolRejectsDuplicateNames(t *testing.T) {
 	}
 	if symbol, ok := runtimeProfileSymbol(lang, "duplicate"); ok {
 		t.Fatalf("duplicate symbol=%d ok=true, want fail-closed", symbol)
-	}
-}
-
-func TestRuntimeProfileTerminalSymbolIgnoresNonterminalDuplicate(t *testing.T) {
-	lang := &gotreesitter.Language{
-		TokenCount:  2,
-		SymbolNames: []string{"end", "class", "class"},
-	}
-	if symbol, ok := runtimeProfileTerminalSymbol(lang, "class"); !ok || symbol != 1 {
-		t.Fatalf("terminal symbol=%d ok=%t, want 1/true", symbol, ok)
-	}
-	lang.SymbolNames[0] = "class"
-	if symbol, ok := runtimeProfileTerminalSymbol(lang, "class"); ok {
-		t.Fatalf("duplicate terminal symbol=%d ok=true, want fail-closed", symbol)
-	}
-}
-
-func TestBuiltinCompactEOFProfilesRetireOnlyHTTPAndRobotField(t *testing.T) {
-	PurgeEmbeddedLanguageCache()
-	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
-
-	for _, test := range []struct {
-		name string
-		load func() *gotreesitter.Language
-	}{
-		{name: "http", load: HttpLanguage},
-		{name: "robot", load: RobotLanguage},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if _, ok := builtinLanguageRuntimeProfiles[test.name]; !ok {
-				t.Fatal("retired EOF profile lost its record")
-			}
-			if language := test.load(); language.CompactEOFAcceptNoActionSiblingsCertified {
-				t.Fatal("built-in artifact retained the legacy EOF sibling field")
-			}
-
-			custom := &gotreesitter.Language{Name: test.name}
-			AttachLanguageSupport(test.name, custom)
-			if custom.CompactEOFAcceptNoActionSiblingsCertified {
-				t.Fatal("same-name custom grammar enabled the retired EOF sibling field")
-			}
-
-			attached := &gotreesitter.Language{Name: test.name}
-			if attachBuiltinLanguageRuntimeProfile(test.name, attached) {
-				t.Fatal("retired profile unexpectedly changed a language field")
-			}
-			if attached.CompactEOFAcceptNoActionSiblingsCertified {
-				t.Fatal("retired profile enabled the legacy EOF sibling field")
-			}
-		})
 	}
 }
 

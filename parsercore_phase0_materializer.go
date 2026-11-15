@@ -94,7 +94,6 @@ type compactMaterializer struct {
 	purpose          core.MaterializationPurpose
 
 	replayRootPre                   core.StateID
-	recoveryTerminalAlias           Symbol
 	rootFinalization                diagnosticParserCoreRootFinalization
 	allowErrorRoot                  bool
 	allowLexerSkippedPrefix         bool
@@ -196,7 +195,6 @@ func (m *compactMaterializer) beginEager(
 	m.acceptedLeaves = nil
 	m.allowErrorRoot = false
 	m.allowLexerSkippedPrefix = false
-	m.recoveryTerminalAlias = 0
 	m.rootFinalization = diagnosticParserCoreFinalizeDefault
 	m.budgetScheduler = nil
 	if scratch != nil {
@@ -775,11 +773,6 @@ func (m *compactMaterializer) visit(id core.SubtreeID, view *core.Materializatio
 			entries, 0, len(entries), structuralChildren,
 			Symbol(view.Symbol), view.ProductionID, arena,
 		)
-		if m.recoveryTerminalAlias != 0 {
-			acceptedLeaves.authenticateDirectTerminalAliases(
-				parser, entries, children, view.ProductionID, m.recoveryTerminalAlias, nodesByID,
-			)
-		}
 		parent := m.makeParent(
 			Symbol(view.Symbol), named, children, fieldIDs, fieldSources, view.ProductionID,
 		)
@@ -832,7 +825,7 @@ func (m *compactMaterializer) visit(id core.SubtreeID, view *core.Materializatio
 	// Shared recovery needs the same raw-terminal and clone proof.
 	if m.allowErrorRoot {
 		acceptedLeaves.authenticateDirectTerminalAliases(
-			parser, entries, children, view.ProductionID, 0, nodesByID,
+			parser, entries, children, view.ProductionID, nodesByID,
 		)
 	}
 	if child := parser.collapsibleUnarySelfReduction(action, Token{}, arena, entries, 0, len(entries), children, fieldIDs); child != nil {

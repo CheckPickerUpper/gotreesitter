@@ -28,7 +28,7 @@ func TestAdmissionOwnedEOFRecoveryBundle(t *testing.T) {
 				t.Fatalf("bundle=%t mechanism %s=%t", certified, name, enabled)
 			}
 		}
-		if options.allowCompactStackSummaryRecovery || options.allowCompactS5EOFMissingInsertion || options.allowCompactRecoverEOF ||
+		if options.allowCompactS5EOFMissingInsertion ||
 			options.allowCompactRecoveryTrailingLineageRetirement || options.allowCompactRecoveryErrorModeKeywordCapture {
 			t.Fatal("the owned EOF bundle enabled an unrelated recovery route")
 		}

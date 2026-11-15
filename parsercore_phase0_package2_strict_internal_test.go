@@ -29,7 +29,6 @@ func package2ScalaStrictRunner(t *testing.T) *parserCoreFreshFullRunner {
 	lang.CompactMissingTokenInsertionCertified = true
 	lang.CompactS5EOFMissingInsertionCertified = true
 	lang.CompactFaithfulS5RecoveryCertified = true
-	lang.CompactStackSummaryRecoveryCertified = false
 	lang.CompactPrimaryAcceptanceDerivationCertified = true
 	lang.CompactAcceptanceStructuralElectionCertified = true
 	lang.CompactRecoveryTrailingLineageRetirementCertified = true

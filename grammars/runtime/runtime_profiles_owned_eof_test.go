@@ -12,10 +12,9 @@ func TestGoOwnedEOFRecoveryProfileAttaches(t *testing.T) {
 	if !lang.CompactOwnedEOFRecoveryCertified || !lang.CompactConvergedReductionSplitDropsCertified {
 		t.Fatal("exact Go profile lacks the owned EOF bundle or existing split drops")
 	}
-	if lang.CompactStrategy2ErrorRegionCertified || lang.CompactStackSummaryRecoveryCertified ||
+	if lang.CompactStrategy2ErrorRegionCertified ||
 		lang.CompactMissingTokenInsertionCertified || lang.CompactS5EOFMissingInsertionCertified ||
-		lang.CompactFaithfulS5RecoveryCertified || lang.CompactRecoveryPlainFirstCertified ||
-		lang.CompactRecoverEOFCertified {
+		lang.CompactFaithfulS5RecoveryCertified || lang.CompactRecoveryPlainFirstCertified {
 		t.Fatal("the Go bundle leaked independent shared-recovery capabilities")
 	}
 	custom := &gotreesitter.Language{Name: "go"}

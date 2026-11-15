@@ -47,12 +47,7 @@ func TestAdmissionCandidateRoutesEOFSiblingsWithoutProfileGrant(t *testing.T) {
 					loaded.ExternalTokenCount,
 				)
 			}
-			if loaded.CompactEOFAcceptNoActionSiblingsCertified {
-				t.Errorf("loaded profile still sets the legacy EOF sibling bypass")
-			}
-
 			productionLanguage := cloneAdmissionTestLanguage(loaded)
-			productionLanguage.CompactEOFAcceptNoActionSiblingsCertified = false
 			production := gts.NewParser(productionLanguage)
 			production.SetAdmissionCandidateRoute(false)
 			source := []byte(grammars.ParseSmokeSample(name))
@@ -66,39 +61,7 @@ func TestAdmissionCandidateRoutesEOFSiblingsWithoutProfileGrant(t *testing.T) {
 				t.Fatalf("inspect production tree: %v", err)
 			}
 
-			legacyLanguage := cloneAdmissionTestLanguage(loaded)
-			legacyLanguage.CompactEOFAcceptNoActionSiblingsCertified = true
-			gts.ResetAdmissionCandidateCountersForTest()
-			legacy := gts.NewParser(legacyLanguage)
-			legacy.SetAdmissionCandidateRoute(true)
-			legacyTree, err := legacy.Parse(source)
-			if err != nil {
-				t.Fatalf("explicit legacy-bypass parse: %v", err)
-			}
-			defer legacyTree.Release()
-			legacyRouted, legacyFallback := gts.AdmissionCandidateCounters()
-			if legacyRouted != 1 || legacyFallback != 0 {
-				t.Fatalf(
-					"legacy route counters routed=%d fallback=%d reason=%q",
-					legacyRouted,
-					legacyFallback,
-					gts.AdmissionCandidateLastFallbackReason(),
-				)
-			}
-			legacyInspection, err := benchfixtures.InspectGoTree(legacyTree.RootNode(), legacyLanguage)
-			if err != nil {
-				t.Fatalf("inspect legacy tree: %v", err)
-			}
-			if !reflect.DeepEqual(legacyInspection, productionInspection) {
-				t.Fatalf(
-					"legacy tree inspection differs: candidate=%+v production=%+v",
-					legacyInspection,
-					productionInspection,
-				)
-			}
-
 			candidateLanguage := cloneAdmissionTestLanguage(loaded)
-			candidateLanguage.CompactEOFAcceptNoActionSiblingsCertified = false
 			gts.ResetAdmissionCandidateCountersForTest()
 			candidate := gts.NewParser(candidateLanguage)
 			candidate.SetAdmissionCandidateRoute(true)

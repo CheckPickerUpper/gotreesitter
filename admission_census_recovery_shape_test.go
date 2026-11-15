@@ -52,9 +52,6 @@ type admissionCensusRecoveryShapeWitness struct {
 	source   string
 	// mechanism is the c-mechanism value the census must report.
 	mechanism string
-	// admitted marks the first live recover_eof witness. It now serves through
-	// the certified compact route, so it has no decline classification.
-	admitted bool
 	// candidates, when non-zero, additionally pins the reported
 	// missing-token candidate population. It is asserted only where the
 	// count is a structural claim worth pinning (exactly one candidate
@@ -90,7 +87,7 @@ func admissionCensusRecoveryShapeWitnesses() []admissionCensusRecoveryShapeWitne
 		// C ts_parser__recover recover_eof: the elected token is
 		// authenticated end-of-file and no earlier mechanism applies, so C
 		// wraps the remaining stack in one ERROR root.
-		{language: "yaml", source: "[\n", mechanism: "recover-eof-wrap", admitted: true},
+		{language: "yaml", source: "[\n", mechanism: "recover-eof-wrap"},
 	}
 }
 
@@ -145,12 +142,6 @@ func TestAdmissionCensusRecoveryShapeClassification(t *testing.T) {
 	for _, witness := range admissionCensusRecoveryShapeWitnesses() {
 		t.Run(witness.language+"/"+witness.mechanism, func(t *testing.T) {
 			reason := admissionCensusDeclineReason(t, witness.language, witness.source)
-			if witness.admitted {
-				if reason != "" {
-					t.Fatalf("certified compact route declined %q: %s", witness.source, reason)
-				}
-				return
-			}
 			if reason == "" {
 				t.Fatalf("compact route admitted %q; expected a recovery decline", witness.source)
 			}
@@ -179,16 +170,6 @@ func TestAdmissionCensusRecoveryShapeIsDiagnosticOnly(t *testing.T) {
 				disableAdmissionCensus(t)
 				return admissionCensusDeclineReason(t, witness.language, witness.source)
 			}()
-			if witness.admitted {
-				if off != "" {
-					t.Fatalf("certified compact route declined %q with the census disabled: %s", witness.source, off)
-				}
-				enableAdmissionCensus(t)
-				if on := admissionCensusDeclineReason(t, witness.language, witness.source); on != "" {
-					t.Fatalf("certified compact route declined %q with the census enabled: %s", witness.source, on)
-				}
-				return
-			}
 			if off == "" {
 				t.Fatalf("compact route admitted %q with the census disabled", witness.source)
 			}
@@ -247,9 +228,6 @@ func TestAdmissionCensusRecoveryShapeVocabulary(t *testing.T) {
 		t.Fatalf("census exposes %d recovery shapes, want the 4 documented ones", len(known))
 	}
 	for _, witness := range admissionCensusRecoveryShapeWitnesses() {
-		if witness.admitted {
-			continue
-		}
 		if !known[witness.mechanism] {
 			t.Fatalf("witness pins mechanism %q outside the documented vocabulary", witness.mechanism)
 		}
@@ -284,9 +262,6 @@ func TestAdmissionCensusRecoveryShapeNeedsItsOwnOptIn(t *testing.T) {
 	t.Cleanup(gts.ResetAdmissionCensusEnabledForTest)
 
 	for _, witness := range admissionCensusRecoveryShapeWitnesses() {
-		if witness.admitted {
-			continue
-		}
 		reason := admissionCensusDeclineReason(t, witness.language, witness.source)
 		if reason == "" {
 			t.Fatalf("compact route admitted %q", witness.source)

@@ -396,18 +396,6 @@ type ConflictPolicy struct {
 	ReduceSymbols []Symbol
 }
 
-// CompactRecoveryTerminalAliasRule certifies one terminal alias that can
-// survive compact strategy-2 recovery. ResumeState and ResumeSymbol identify
-// the exact recovery resume. AliasSymbol identifies the published leaf.
-//
-// Exact built-in profiles bind these values to one grammar blob. Languages
-// without a rule keep the accepted-root leaf audit fail-closed.
-type CompactRecoveryTerminalAliasRule struct {
-	ResumeState  StateID
-	ResumeSymbol Symbol
-	AliasSymbol  Symbol
-}
-
 // ConflictPolicyAnyState and ConflictPolicyAnyLookahead are sentinel State/
 // Lookahead values matching every state or every lookahead symbol instead of
 // one exact table row. They support policies scoped by state and/or reduce
@@ -528,40 +516,6 @@ const (
 	// span, raw top-level spans, and the isolated-error shape.
 	ResultCompatibilityNativeRecoveredStructure ResultCompatibilityCapability = 1 << 6
 )
-
-// CompactRecoverEOFArtifactReceipt is the locked-C certification data for one
-// compact recover_eof boundary. A zero BlobSHA256 disables this route. The
-// receipt binds the exact grammar artifact to the terminal, parser boundary,
-// and compact scheduler facts for the locked-C-certified witness.
-//
-// The work fields are intentionally explicit. They prevent a Boolean grant
-// from admitting a parse after an unmodeled shift, reduction, conflict, fork,
-// or recovery operation changes the pre-EOF lineage.
-type CompactRecoverEOFArtifactReceipt struct {
-	BlobSHA256        [32]byte
-	TerminalSymbol    Symbol
-	EOFState          StateID
-	EOFByteOffset     uint32
-	Passes            uint64
-	Elections         uint64
-	ActionLookups     uint64
-	Dispatches        uint64
-	OrdinaryShifts    uint64
-	OrdinaryCohorts   uint64
-	ExtraShifts       uint64
-	ExtraCohorts      uint64
-	Reductions        uint64
-	Conflicts         uint64
-	ConflictActions   uint64
-	Forks             uint64
-	RepetitionFolds   uint64
-	RecoveryWork      uint64
-	NoActionDrops     uint64
-	ReductionPauses   uint64
-	Accepts           uint64
-	Canonicalizations uint64
-	PeakHeaders       uint64
-}
 
 // Language holds all data needed to parse a specific language.
 // It mirrors tree-sitter's TSLanguage C struct, translated into
@@ -874,12 +828,6 @@ type Language struct {
 	// surviving path. Custom and adapted languages fail closed by default.
 	CompactConvergedReductionSplitDropsCertified bool
 
-	// CompactEOFAcceptNoActionSiblingsCertified permits one authenticated EOF
-	// accept head to discard siblings that have no action for that same EOF.
-	// Exact built-in profiles set this only after C-oracle parity proves the
-	// accepted head matches production. Custom and adapted languages fail closed.
-	CompactEOFAcceptNoActionSiblingsCertified bool
-
 	// CompactPrimaryAcceptanceDerivationCertified permits the compact fresh-full
 	// route to select one primary derivation over secondary conflict derivations.
 	// The primary score must be at least every secondary score. Exact built-in
@@ -956,34 +904,6 @@ type Language struct {
 	// no-action point exactly as before this stage landed.
 	CompactStrategy2ErrorRegionCertified bool
 
-	// CompactS3MixedShiftReduceClosureStates permits standalone strategy-2
-	// recovery to stop its single-path closure at one certified state that has
-	// both shift and reduce actions across terminals. Other mixed states decline.
-	CompactS3MixedShiftReduceClosureStates []StateID
-
-	// CompactRecoverEOFCertified permits one exact EOF no-action lineage to
-	// publish tree-sitter's non-extra ERROR root from recover_eof. It is a
-	// compatibility marker. The compact route also requires the explicit,
-	// artifact-bound CompactRecoverEOFArtifactReceipt below.
-	CompactRecoverEOFCertified bool
-
-	// CompactRecoverEOFArtifactReceipt carries locked-C boundary and scheduler
-	// facts for the one recover_eof route certified on this language artifact.
-	// Its zero value disables the route, including when the compatibility marker
-	// above is set by an older caller.
-	CompactRecoverEOFArtifactReceipt CompactRecoverEOFArtifactReceipt
-
-	// CompactStackSummaryRecoveryCertified permits the compact fresh-full
-	// route to scan C's bounded stack summary at a no-action point. A
-	// successful scan forks the head into an ancestor-recovered lineage and
-	// an error-absorb lineage.
-	//
-	// The fork also requires CompactStrategy2ErrorRegionCertified. Both
-	// lineages continue to acceptance, where C-compatible error pricing selects
-	// the result. Exact built-in profiles must certify the complete competition.
-	// Custom and adapted languages retain the false default.
-	CompactStackSummaryRecoveryCertified bool
-
 	// CompactMissingTokenInsertionCertified permits the compact fresh-full
 	// route to scan for C's missing-token recovery candidate. A successful
 	// scan forks the head into missing and error-absorb lineages.
@@ -996,9 +916,8 @@ type Language struct {
 
 	// CompactS5EOFMissingInsertionCertified permits the compact fresh-full
 	// route to run S5 reductions and missing-token insertion when the elected
-	// token is EOF. This is distinct from CompactRecoverEOFCertified: S5
-	// publishes a grammar root with a missing leaf, not a recover_eof ERROR
-	// root. Exact built-in profiles set this only after locked-C parity proves
+	// token is EOF. S5 publishes a grammar root with a missing leaf, not a
+	// recover_eof ERROR root. Exact built-in profiles set this only after locked-C parity proves
 	// the complete EOF competition. Custom and adapted languages retain the
 	// false default.
 	CompactS5EOFMissingInsertionCertified bool
@@ -1030,13 +949,6 @@ type Language struct {
 	// the complete recovery election. Custom, adapted, and stale artifacts
 	// retain the false default.
 	CompactRecoveryErrorModeKeywordCaptureCertified bool
-
-	// CompactRecoveryTerminalAliasRules permits the accepted-root leaf audit to
-	// authenticate a materialized terminal alias after one certified recovery
-	// resume. The materializer must also prove the exact raw terminal and alias
-	// node relationship. Exact built-in profiles bind each rule to one grammar
-	// blob. Custom, adapted, and stale artifacts retain an empty rule set.
-	CompactRecoveryTerminalAliasRules []CompactRecoveryTerminalAliasRule
 
 	// CompactRecoveryPlainFirstCertified preserves the ordinary compact lexer
 	// for the first attempt. After a fail-closed decline, the route retries with
@@ -1324,18 +1236,6 @@ func (l *Language) BlobInfo() LanguageBlobInfo {
 		return LanguageBlobInfo{}
 	}
 	return l.blobInfo
-}
-
-func compactRecoverEOFArtifactConfigured(l *Language) bool {
-	if l == nil || !l.CompactRecoverEOFCertified {
-		return false
-	}
-	receipt := l.CompactRecoverEOFArtifactReceipt
-	if receipt.BlobSHA256 == ([32]byte{}) {
-		return false
-	}
-	blob, ok := l.GrammarBlobSHA256()
-	return ok && blob == receipt.BlobSHA256
 }
 
 var nextCompactTableIdentity atomic.Uint64

@@ -104,9 +104,6 @@ func (p *Parser) normalizeReturnedIncrementalTree(tree, oldTree *Tree, source []
 		markStoppedEarlyTreeHasError(tree)
 		return
 	}
-	if compactRecoverEOFRootSpanPreserved(tree) {
-		return
-	}
 	if tree.hasDeferredResultCompatibility() {
 		finalizeDeferredReturnedTreeTruncation(tree, source)
 		return
@@ -141,9 +138,6 @@ func shouldNormalizeReturnedTree(tree *Tree) bool {
 func (p *Parser) normalizeReturnedTreeForParse(tree *Tree, source []byte) {
 	if !shouldNormalizeReturnedTree(tree) {
 		markStoppedEarlyTreeHasError(tree)
-		return
-	}
-	if compactRecoverEOFRootSpanPreserved(tree) {
 		return
 	}
 	if tree.hasDeferredResultCompatibility() {
@@ -215,13 +209,7 @@ func oldTreeDisablesIncrementalReuse(oldTree *Tree) bool {
 // classic GLR C-recovery port (cRecoverEOFAccept, parser_recover_c.go) sets
 // nodeFlagCompactRecoverEOF on its published root but never sets
 // compactMaterialized, so a compactMaterialized-gated check never
-// recognizes it. This superseded compactRecoverEOFTreeMarked (removed;
-// its only production callers now use this predicate, and its one
-// remaining test caller inlines the compactMaterialized-gated check
-// directly — parsercore_phase0_owned_recovery_materialize_test.go).
-// compactRecoverEOFRootSpanPreserved stays tied to compactMaterialized on
-// purpose: it protects a compact-only raw-span guarantee the classic
-// pipeline does not share.
+// recognizes it.
 func recoverEOFRootPublished(tree *Tree) bool {
 	return tree != nil && tree.root != nil && tree.root.symbol == errorSymbol &&
 		tree.root.hasFlag(nodeFlagCompactRecoverEOF)
@@ -588,9 +576,6 @@ func finalizeReturnedTreeRootSpan(tree *Tree, source []byte) {
 	if tree == nil {
 		return
 	}
-	if compactRecoverEOFRootSpanPreserved(tree) {
-		return
-	}
 	root := rawRootOrNil(tree)
 	if root == nil {
 		return
@@ -610,23 +595,6 @@ func finalizeReturnedTreeRootSpan(tree *Tree, source []byte) {
 	}
 	markTruncatedTreeHasError(rt, root)
 	tree.setParseRuntime(rt)
-}
-
-// compactRecoverEOFRootSpanPreserved identifies the one compact result whose
-// raw C root intentionally ends before a clean source tail. The shape is
-// deliberately exact: ordinary compact ERROR roots and edited trees do not
-// bypass the normal root-span finalizer.
-func compactRecoverEOFRootSpanPreserved(tree *Tree) bool {
-	if tree == nil || !tree.compactMaterialized || tree.language == nil ||
-		!tree.language.CompactRecoverEOFCertified || tree.root == nil ||
-		!tree.root.IsError() || !tree.root.HasError() ||
-		!tree.root.hasFlag(nodeFlagCompactRecoverEOF) {
-		return false
-	}
-	rt := tree.rawParseRuntime()
-	return rt.StopReason == ParseStopAccepted && rt.LastTokenWasEOF &&
-		rt.ExpectedEOFByte > rt.RootEndByte &&
-		rt.LastTokenEndByte == rt.ExpectedEOFByte
 }
 
 // markTruncatedTreeHasError repairs the wave2b SILENT-TRUNCATION contract: a

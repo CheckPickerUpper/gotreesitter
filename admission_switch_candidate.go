@@ -48,36 +48,31 @@ func newAdmissionCandidateRunner(p *Parser) (*parserCoreFreshFullRunner, error) 
 	}
 	allowConvergedSplitDrop := p.language.CompactConvergedReductionSplitDropsCertified ||
 		core.CompactConvergedSplitProofBypassEnabled
-	allowRecoverEOF := compactRecoverEOFArtifactConfigured(p.language)
 	allowOwnedEOFRecovery := p.language.CompactOwnedEOFRecoveryCertified
 	options := DiagnosticParserCorePrefixOptions{
-		ReceiptMode:                    DiagnosticParserCoreReceiptSummary,
-		MaxTokens:                      1 << 24,
-		MaxDispatches:                  1 << 24,
-		Limits:                         admissionCandidateLimits(),
-		freshSchedulerSession:          true,
-		allowEOFAcceptNoActionSiblings: p.language.CompactEOFAcceptNoActionSiblingsCertified,
+		ReceiptMode:           DiagnosticParserCoreReceiptSummary,
+		MaxTokens:             1 << 24,
+		MaxDispatches:         1 << 24,
+		Limits:                admissionCandidateLimits(),
+		freshSchedulerSession: true,
 		// The metadata producer is private to the admission candidate. It runs
 		// only for an exact two-head EOF frontier and proves its own immutable
-		// event topology. An explicit public sibling grant keeps the legacy
-		// bypass and takes precedence in dispatchPassActive.
+		// event topology.
 		allowMetadataEOFAcceptRecovery:           true,
 		allowPrimaryAcceptDerivation:             p.language.CompactPrimaryAcceptanceDerivationCertified,
 		allowCompactAcceptanceStructuralElection: p.language.CompactAcceptanceStructuralElectionCertified,
 		allowConvergedSplitDropArtifact:          allowConvergedSplitDrop,
 		captureLexerSkippedPrefixProvenance:      p.language.CompactLexerSkippedPrefixTilingCertified,
-		// Recovery binds the shared mechanism, the dedicated recover_eof route,
-		// or the owned EOF bundle. The bundle cannot publish shared recovery.
-		Recovery:                          p.language.CompactStrategy2ErrorRegionCertified || allowRecoverEOF || allowOwnedEOFRecovery,
+		// Recovery binds the shared mechanism or the owned EOF bundle. The
+		// bundle cannot publish shared recovery.
+		Recovery:                          p.language.CompactStrategy2ErrorRegionCertified || allowOwnedEOFRecovery,
 		allowCompactStrategy2ErrorRegion:  p.language.CompactStrategy2ErrorRegionCertified || allowOwnedEOFRecovery,
-		allowCompactRecoverEOF:            allowRecoverEOF,
-		allowCompactStackSummaryRecovery:  p.language.CompactStackSummaryRecoveryCertified,
 		allowCompactMissingTokenInsertion: p.language.CompactMissingTokenInsertionCertified || allowOwnedEOFRecovery,
 		allowCompactS5EOFMissingInsertion: p.language.CompactS5EOFMissingInsertionCertified,
 		allowCompactFaithfulS5Recovery:    p.language.CompactFaithfulS5RecoveryCertified || allowOwnedEOFRecovery,
 		allowCompactRecoveryVersionTurns:  allowOwnedEOFRecovery,
-		allowCompactRecoveryLineageSelection: allowOwnedEOFRecovery || (p.language.CompactStrategy2ErrorRegionCertified &&
-			(p.language.CompactStackSummaryRecoveryCertified || p.language.CompactMissingTokenInsertionCertified)),
+		allowCompactRecoveryLineageSelection: allowOwnedEOFRecovery ||
+			(p.language.CompactStrategy2ErrorRegionCertified && p.language.CompactMissingTokenInsertionCertified),
 		allowCompactRecoveryTrailingLineageRetirement: p.language.CompactRecoveryTrailingLineageRetirementCertified,
 		allowCompactRecoveryErrorModeKeywordCapture:   p.language.CompactRecoveryErrorModeKeywordCaptureCertified,
 		noLookaheadRootSymbol:                         p.rootSymbol,
@@ -413,9 +408,6 @@ func (p *Parser) tryCompactFullParseRoute(source []byte) (*Tree, bool, string) {
 func (p *Parser) finalizeCompactReturnedTreeForParse(tree *Tree, source []byte) {
 	if !shouldNormalizeReturnedTree(tree) {
 		markStoppedEarlyTreeHasError(tree)
-		return
-	}
-	if compactRecoverEOFRootSpanPreserved(tree) {
 		return
 	}
 	if tree.hasDeferredResultCompatibility() {
