@@ -56,6 +56,9 @@ func TestDNonTerminalAliasMapParity(t *testing.T) { lockedNonTerminalAliasMapPar
 func TestKotlinNonTerminalAliasMapParity(t *testing.T) {
 	lockedNonTerminalAliasMapParity(t, "kotlin", "src")
 }
+func TestMakeNonTerminalAliasMapParity(t *testing.T) {
+	lockedNonTerminalAliasMapParity(t, "make", "src")
+}
 func TestOCamlNonTerminalAliasMapParity(t *testing.T) {
 	lockedNonTerminalAliasMapParity(t, "ocaml", "grammars/ocaml/src")
 }

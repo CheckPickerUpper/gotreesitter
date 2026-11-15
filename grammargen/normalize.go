@@ -492,7 +492,7 @@ func Normalize(g *Grammar) (*NormalizedGrammar, error) {
 
 	// Phase 4: Pre-process rules — expand Optional, lift Repeat/Repeat1
 	// into auxiliary nonterminals at ALL levels (including top-level).
-	auxCounter := 0
+	numbers := newHelperNumbers()
 	processedRules := make(map[string]*Rule)
 	auxRules := make(map[string]*Rule)
 	auxOrigins := make(map[string]map[string]bool) // aux rule name → originating grammar rule names
@@ -513,7 +513,7 @@ func Normalize(g *Grammar) (*NormalizedGrammar, error) {
 		// the rule itself into the repetition binary tree instead of
 		// introducing another auxiliary rule.
 		rule = expandTopLevelRepeat(cloneRule(rule), name, st.binaryRepeatMode)
-		processed := prepareRule(rule, name, st, auxRules, auxOrigins, &auxCounter)
+		processed := prepareRule(rule, name, st, auxRules, auxOrigins, numbers)
 		processedRules[name] = processed
 	}
 
@@ -2014,8 +2014,35 @@ func ruleReachesAlias(r *Rule, gRules map[string]*Rule, seen map[string]bool, de
 //     alias attaches to a single child slot
 //
 // This handles repeat/repeat1 at ALL levels including the root.
-func prepareRule(r *Rule, parentName string, st *symbolTable, auxRules map[string]*Rule, auxOrigins map[string]map[string]bool, counter *int) *Rule {
-	return prepareRuleUnderAssociativity(r, parentName, nil, st, auxRules, auxOrigins, counter)
+// helperNumbers numbers the helper nonterminals normalization lifts out of
+// each rule. tree-sitter's expand_repeats numbers a rule's repeat helpers
+// from 1 within that rule (a rule's first repeat helper is <rule>_repeat1), so
+// each kind of helper counts within the rule that produced it.
+type helperNumbers struct {
+	repeats      map[string]int
+	choiceLifts  map[string]int
+	aliasRepeats map[string]int
+}
+
+// newHelperNumbers returns numbering with no helper named yet.
+func newHelperNumbers() *helperNumbers {
+	return &helperNumbers{repeats: map[string]int{}, choiceLifts: map[string]int{}, aliasRepeats: map[string]int{}}
+}
+
+// name returns the name format gives rule's next helper of the kind counts
+// numbers, skipping any number whose name a symbol already holds.
+func (numbers *helperNumbers) name(counts map[string]int, st *symbolTable, format, rule string) string {
+	for {
+		counts[rule]++
+		name := fmt.Sprintf(format, rule, counts[rule])
+		if _, taken := st.lookupNonterm(name); !taken {
+			return name
+		}
+	}
+}
+
+func prepareRule(r *Rule, parentName string, st *symbolTable, auxRules map[string]*Rule, auxOrigins map[string]map[string]bool, numbers *helperNumbers) *Rule {
+	return prepareRuleUnderAssociativity(r, parentName, nil, st, auxRules, auxOrigins, numbers)
 }
 
 // prepareRuleUnderAssociativity is prepareRule for a rule nested inside the
@@ -2025,7 +2052,7 @@ func prepareRule(r *Rule, parentName string, st *symbolTable, auxRules map[strin
 // precedence and associativity, the repeated steps included, so a shift that
 // continues the repeat ties with a reduce of the enclosing rule and the
 // associativity settles it.
-func prepareRuleUnderAssociativity(r *Rule, parentName string, enclosingAssociativity *Rule, st *symbolTable, auxRules map[string]*Rule, auxOrigins map[string]map[string]bool, counter *int) *Rule {
+func prepareRuleUnderAssociativity(r *Rule, parentName string, enclosingAssociativity *Rule, st *symbolTable, auxRules map[string]*Rule, auxOrigins map[string]map[string]bool, numbers *helperNumbers) *Rule {
 	if r == nil {
 		return r
 	}
@@ -2037,35 +2064,35 @@ func prepareRuleUnderAssociativity(r *Rule, parentName string, enclosingAssociat
 	// Handle the current node.
 	switch r.Kind {
 	case RuleRepeat:
-		preparedInner := prepareRuleUnderAssociativity(cloneRule(r.Children[0]), parentName, enclosingAssociativity, st, auxRules, auxOrigins, counter)
+		preparedInner := prepareRuleUnderAssociativity(cloneRule(r.Children[0]), parentName, enclosingAssociativity, st, auxRules, auxOrigins, numbers)
 		// If the inner rule is a wide CHOICE and we have a lift threshold,
 		// extract it into an auxiliary nonterminal to prevent the repeat
 		// helper from creating N² productions (where N = choice width).
-		preparedInner = maybeExtractWideChoice(preparedInner, parentName, st, auxRules, auxOrigins, counter)
+		preparedInner = maybeExtractWideChoice(preparedInner, parentName, st, auxRules, auxOrigins, numbers)
 		if st.binaryRepeatMode {
-			auxName := ensureRepeatAuxBinary(parentName, preparedInner, enclosingAssociativity, st, auxRules, counter)
+			auxName := ensureRepeatAuxBinary(parentName, preparedInner, enclosingAssociativity, st, auxRules, numbers)
 			recordAuxOrigin(auxOrigins, auxName, parentName)
 			return Choice(Sym(auxName), Blank())
 		}
-		auxName := ensureRepeatAuxLinear(parentName, preparedInner, enclosingAssociativity, st, auxRules, counter)
+		auxName := ensureRepeatAuxLinear(parentName, preparedInner, enclosingAssociativity, st, auxRules, numbers)
 		recordAuxOrigin(auxOrigins, auxName, parentName)
 		return Choice(Blank(), cloneRule(preparedInner), Sym(auxName))
 
 	case RuleRepeat1:
-		preparedInner := prepareRuleUnderAssociativity(cloneRule(r.Children[0]), parentName, enclosingAssociativity, st, auxRules, auxOrigins, counter)
-		preparedInner = maybeExtractWideChoice(preparedInner, parentName, st, auxRules, auxOrigins, counter)
+		preparedInner := prepareRuleUnderAssociativity(cloneRule(r.Children[0]), parentName, enclosingAssociativity, st, auxRules, auxOrigins, numbers)
+		preparedInner = maybeExtractWideChoice(preparedInner, parentName, st, auxRules, auxOrigins, numbers)
 		if st.binaryRepeatMode {
-			auxName := ensureRepeatAuxBinary(parentName, preparedInner, enclosingAssociativity, st, auxRules, counter)
+			auxName := ensureRepeatAuxBinary(parentName, preparedInner, enclosingAssociativity, st, auxRules, numbers)
 			recordAuxOrigin(auxOrigins, auxName, parentName)
 			return Sym(auxName)
 		}
-		auxName := ensureRepeatAuxLinear(parentName, preparedInner, enclosingAssociativity, st, auxRules, counter)
+		auxName := ensureRepeatAuxLinear(parentName, preparedInner, enclosingAssociativity, st, auxRules, numbers)
 		recordAuxOrigin(auxOrigins, auxName, parentName)
 		return Choice(cloneRule(preparedInner), Sym(auxName))
 
 	case RuleOptional:
 		// optional(x) → choice(x, blank)
-		inner := prepareRuleUnderAssociativity(r.Children[0], parentName, enclosingAssociativity, st, auxRules, auxOrigins, counter)
+		inner := prepareRuleUnderAssociativity(r.Children[0], parentName, enclosingAssociativity, st, auxRules, auxOrigins, numbers)
 		return Choice(inner, Blank())
 
 	case RulePrecLeft, RulePrecRight:
@@ -2106,13 +2133,10 @@ func prepareRuleUnderAssociativity(r *Rule, parentName string, enclosingAssociat
 				repeatNode = repeatNode.Children[0]
 			}
 
-			*counter++
-			auxName := fmt.Sprintf("%s_alias_repeat%d", parentName, *counter)
-			if _, exists := st.lookupNonterm(auxName); !exists {
-				st.addSymbol(auxName, SymbolInfo{
-					Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal,
-				})
-			}
+			auxName := numbers.name(numbers.aliasRepeats, st, "%s_alias_repeat%d", parentName)
+			st.addSymbol(auxName, SymbolInfo{
+				Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal,
+			})
 
 			// Place a Repeat1 body inside the aux (no ε), so when aux reduces
 			// it always wraps at least one inner element. The alias then
@@ -2137,7 +2161,7 @@ func prepareRuleUnderAssociativity(r *Rule, parentName string, enclosingAssociat
 				precWrap.Children = []*Rule{auxBody}
 				auxBody = precWrap
 			}
-			preparedInner := prepareRule(auxBody, auxName, st, auxRules, auxOrigins, counter)
+			preparedInner := prepareRule(auxBody, auxName, st, auxRules, auxOrigins, numbers)
 			auxRules[auxName] = preparedInner
 			recordAuxOrigin(auxOrigins, auxName, parentName)
 
@@ -2158,7 +2182,7 @@ func prepareRuleUnderAssociativity(r *Rule, parentName string, enclosingAssociat
 
 	// Recurse into children.
 	for i, c := range r.Children {
-		r.Children[i] = prepareRuleUnderAssociativity(c, parentName, enclosingAssociativity, st, auxRules, auxOrigins, counter)
+		r.Children[i] = prepareRuleUnderAssociativity(c, parentName, enclosingAssociativity, st, auxRules, auxOrigins, numbers)
 	}
 
 	// For SEQ nodes in grammars with ChoiceLiftThreshold: lift inline CHOICE
@@ -2166,7 +2190,7 @@ func prepareRuleUnderAssociativity(r *Rule, parentName string, enclosingAssociat
 	// This prevents Cartesian product explosion in production extraction.
 	// Only enabled for grammars that explicitly opt in (e.g. COBOL with 1071 rules).
 	if r.Kind == RuleSeq && st.choiceLiftThreshold > 0 {
-		r = liftLargeSeqChoices(r, parentName, st, auxRules, auxOrigins, counter)
+		r = liftLargeSeqChoices(r, parentName, st, auxRules, auxOrigins, numbers)
 	}
 
 	return r
@@ -2181,21 +2205,18 @@ func prepareRuleUnderAssociativity(r *Rule, parentName string, enclosingAssociat
 // choiceLiftThreshold. If so, it extracts the CHOICE into an auxiliary
 // nonterminal and returns a symbol reference. This prevents repeat helpers
 // from creating N² productions when their body is a wide CHOICE.
-func maybeExtractWideChoice(r *Rule, parentName string, st *symbolTable, auxRules map[string]*Rule, auxOrigins map[string]map[string]bool, counter *int) *Rule {
+func maybeExtractWideChoice(r *Rule, parentName string, st *symbolTable, auxRules map[string]*Rule, auxOrigins map[string]map[string]bool, numbers *helperNumbers) *Rule {
 	if st.choiceLiftThreshold <= 0 || r == nil || r.Kind != RuleChoice {
 		return r
 	}
 	if len(r.Children) <= st.choiceLiftThreshold {
 		return r
 	}
-	*counter++
-	auxName := fmt.Sprintf("_%s_choice_lift%d", parentName, *counter)
-	if _, exists := st.lookupNonterm(auxName); !exists {
-		st.addSymbol(auxName, SymbolInfo{
-			Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal,
-		})
-		auxRules[auxName] = r
-	}
+	auxName := numbers.name(numbers.choiceLifts, st, "_%s_choice_lift%d", parentName)
+	st.addSymbol(auxName, SymbolInfo{
+		Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal,
+	})
+	auxRules[auxName] = r
 	recordAuxOrigin(auxOrigins, auxName, parentName)
 	return Sym(auxName)
 }
@@ -2240,7 +2261,7 @@ func estimateAlternativeCount(r *Rule) int {
 // liftLargeSeqChoices examines a SEQ node and lifts CHOICE children into
 // auxiliary nonterminals when the total Cartesian product exceeds the
 // choiceLiftThreshold. Only active when st.choiceLiftThreshold > 0.
-func liftLargeSeqChoices(seq *Rule, parentName string, st *symbolTable, auxRules map[string]*Rule, auxOrigins map[string]map[string]bool, counter *int) *Rule {
+func liftLargeSeqChoices(seq *Rule, parentName string, st *symbolTable, auxRules map[string]*Rule, auxOrigins map[string]map[string]bool, numbers *helperNumbers) *Rule {
 	threshold := st.choiceLiftThreshold
 	if threshold <= 0 {
 		return seq
@@ -2284,14 +2305,11 @@ func liftLargeSeqChoices(seq *Rule, parentName string, st *symbolTable, auxRules
 			break
 		}
 
-		*counter++
-		auxName := fmt.Sprintf("_%s_choice_lift%d", parentName, *counter)
-		if _, exists := st.lookupNonterm(auxName); !exists {
-			st.addSymbol(auxName, SymbolInfo{
-				Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal,
-			})
-			auxRules[auxName] = cloneRule(newChildren[bestIdx])
-		}
+		auxName := numbers.name(numbers.choiceLifts, st, "_%s_choice_lift%d", parentName)
+		st.addSymbol(auxName, SymbolInfo{
+			Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal,
+		})
+		auxRules[auxName] = cloneRule(newChildren[bestIdx])
 		recordAuxOrigin(auxOrigins, auxName, parentName)
 		newChildren[bestIdx] = Sym(auxName)
 
@@ -2304,7 +2322,7 @@ func liftLargeSeqChoices(seq *Rule, parentName string, st *symbolTable, auxRules
 	return &result
 }
 
-func ensureRepeatAuxLinear(parentName string, inner *Rule, enclosingAssociativity *Rule, st *symbolTable, auxRules map[string]*Rule, counter *int) string {
+func ensureRepeatAuxLinear(parentName string, inner *Rule, enclosingAssociativity *Rule, st *symbolTable, auxRules map[string]*Rule, numbers *helperNumbers) string {
 	key := ""
 	if shouldReuseRepeatAux(st, parentName) {
 		key = "linear:" + canonicalRuleKey(repeatAuxBody(inner, enclosingAssociativity))
@@ -2313,17 +2331,14 @@ func ensureRepeatAuxLinear(parentName string, inner *Rule, enclosingAssociativit
 			return auxName
 		}
 	}
-	*counter++
-	auxName := fmt.Sprintf("%s_repeat%d", parentName, *counter)
-	if _, exists := st.lookupNonterm(auxName); !exists {
-		st.addSymbol(auxName, SymbolInfo{
-			Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal, GeneratedRepeatAux: true,
-		})
-		auxRules[auxName] = repeatAuxBody(Choice(
-			Seq(Sym(auxName), cloneRule(inner)),
-			Seq(cloneRule(inner), cloneRule(inner)),
-		), enclosingAssociativity)
-	}
+	auxName := numbers.name(numbers.repeats, st, "%s_repeat%d", parentName)
+	st.addSymbol(auxName, SymbolInfo{
+		Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal, GeneratedRepeatAux: true,
+	})
+	auxRules[auxName] = repeatAuxBody(Choice(
+		Seq(Sym(auxName), cloneRule(inner)),
+		Seq(cloneRule(inner), cloneRule(inner)),
+	), enclosingAssociativity)
 	st.markGeneratedRepeatAux(auxName)
 	if key != "" {
 		st.repeatAuxByKey[key] = auxName
@@ -2331,7 +2346,7 @@ func ensureRepeatAuxLinear(parentName string, inner *Rule, enclosingAssociativit
 	return auxName
 }
 
-func ensureRepeatAuxBinary(parentName string, inner *Rule, enclosingAssociativity *Rule, st *symbolTable, auxRules map[string]*Rule, counter *int) string {
+func ensureRepeatAuxBinary(parentName string, inner *Rule, enclosingAssociativity *Rule, st *symbolTable, auxRules map[string]*Rule, numbers *helperNumbers) string {
 	key := ""
 	if shouldReuseRepeatAux(st, parentName) {
 		key = "binary:" + canonicalRuleKey(repeatAuxBody(inner, enclosingAssociativity))
@@ -2340,17 +2355,14 @@ func ensureRepeatAuxBinary(parentName string, inner *Rule, enclosingAssociativit
 			return auxName
 		}
 	}
-	*counter++
-	auxName := fmt.Sprintf("%s_repeat%d", parentName, *counter)
-	if _, exists := st.lookupNonterm(auxName); !exists {
-		st.addSymbol(auxName, SymbolInfo{
-			Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal, GeneratedRepeatAux: true,
-		})
-		auxRules[auxName] = repeatAuxBody(Choice(
-			Seq(Sym(auxName), Sym(auxName)),
-			cloneRule(inner),
-		), enclosingAssociativity)
-	}
+	auxName := numbers.name(numbers.repeats, st, "%s_repeat%d", parentName)
+	st.addSymbol(auxName, SymbolInfo{
+		Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal, GeneratedRepeatAux: true,
+	})
+	auxRules[auxName] = repeatAuxBody(Choice(
+		Seq(Sym(auxName), Sym(auxName)),
+		cloneRule(inner),
+	), enclosingAssociativity)
 	st.markGeneratedRepeatAux(auxName)
 	if key != "" {
 		st.repeatAuxByKey[key] = auxName
