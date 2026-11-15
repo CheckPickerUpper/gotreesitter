@@ -10,7 +10,7 @@ func TestLookup(t *testing.T) {
 		wantGenerator  string
 		wantOK         bool
 	}{
-		{name: "make", wantFile: "tree-sitter-make-function-variables.patch", wantRegenerate: true, wantGenerator: "0.24.7", wantOK: true},
+		{name: "make", wantFile: "tree-sitter-make-function-variables.patch", wantRegenerate: true, wantGenerator: "0.25.10", wantOK: true},
 		{name: "typescript", wantFile: "tree-sitter-typescript-import-type.patch", wantRegenerate: true, wantOK: true},
 		{name: "TSX", wantFile: "tree-sitter-typescript-import-type.patch", wantRegenerate: true, wantOK: true},
 		{name: " yaml ", wantFile: "tree-sitter-yaml-multiline-quoted-scalars.patch", wantOK: true},

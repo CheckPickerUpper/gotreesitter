@@ -20,7 +20,7 @@ var byLanguage = map[string]Spec{
 	"make": {
 		File:             "tree-sitter-make-function-variables.patch",
 		RegenerateParser: true,
-		GeneratorVersion: "0.24.7",
+		GeneratorVersion: "0.25.10",
 	},
 	"typescript": {
 		File:             "tree-sitter-typescript-import-type.patch",

@@ -35,15 +35,14 @@ COPY --from=node-runtime /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
-# tree-sitter-cli stays on 0.24.7. Neither cgo_harness/README.md nor BENCH.md
-# binds this version to the C runtime oracle (the independently pinned
-# runtime in parity_c_loader_cgo.go covers parity, not the grammar-generation
-# CLI). parity_c_loader_cgo.go already
-# targets ABI 15 first and falls back through lower ABI values when the
-# installed CLI cannot emit it, so 0.24.7 works inside that negotiated
-# range today. This change is scoped to CI network flakes; a CLI version
-# bump needs its own parity validation pass and stays out of this change.
-RUN npm --global --loglevel=warn install tree-sitter-cli@0.24.7
+# tree-sitter-cli is pinned at 0.25.10, the version internal/grammarpatch
+# requires to regenerate the patched Make grammar. Neither
+# cgo_harness/README.md nor BENCH.md binds this version to the C runtime
+# oracle (the independently pinned runtime in parity_c_loader_cgo.go covers
+# parity, not the grammar-generation CLI). parity_c_loader_cgo.go targets
+# ABI 15 first, which 0.25.10 emits. A CLI version bump needs its own parity
+# validation pass.
+RUN npm --global --loglevel=warn install tree-sitter-cli@0.25.10
 
 WORKDIR /workspace
 

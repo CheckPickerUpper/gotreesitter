@@ -46,7 +46,7 @@ and their argument boundaries intact. The pinned C grammar has the same gap;
 this is a grammar overlay, not a Go runtime recovery exception.
 
 The Make repository has no npm lockfile. Regeneration requires
-`tree-sitter 0.24.7`, the version pinned by `cgo_harness/docker/Dockerfile`,
+`tree-sitter 0.25.10`, the version pinned by `cgo_harness/docker/Dockerfile`,
 and rejects a different version. Both blob extraction and C-oracle loading apply the same
 patch and generator. Remove the overlay after the pinned Make grammar includes
 equivalent variable-reference support, then refresh the blob and run the Make

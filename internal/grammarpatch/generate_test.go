@@ -12,7 +12,7 @@ func TestRegeneratePinnedGenerator(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fixture uses a POSIX shell")
 	}
-	for _, version := range []string{"0.24.7", "0.26.5"} {
+	for _, version := range []string{"0.25.10", "0.26.5"} {
 		t.Run(version, func(t *testing.T) {
 			dir := t.TempDir()
 			grammarDir := filepath.Join(dir, "grammar")
@@ -24,9 +24,9 @@ func TestRegeneratePinnedGenerator(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Setenv("PATH", dir)
-			err := Regenerate(dir, "grammar/src", Spec{GeneratorVersion: "0.24.7"})
-			if version != "0.24.7" {
-				if err == nil || !strings.Contains(err.Error(), "0.24.7 required") {
+			err := Regenerate(dir, "grammar/src", Spec{GeneratorVersion: "0.25.10"})
+			if version != "0.25.10" {
+				if err == nil || !strings.Contains(err.Error(), "0.25.10 required") {
 					t.Fatalf("wrong-version error = %v", err)
 				}
 				if _, err := os.Stat(filepath.Join(grammarDir, "parser.marker")); !os.IsNotExist(err) {
