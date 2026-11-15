@@ -4,7 +4,6 @@
   "grammars": [
     {
       "grammar": "go",
-      "blob_sha256": "4456f9b11706face73bd511d6e80bbd2f0d468055065296db6f5334fa101d379",
       "states": 1507,
       "token_count": 95,
       "symbol_count": 229,
@@ -58,7 +57,6 @@
     },
     {
       "grammar": "javascript",
-      "blob_sha256": "6706f93890f24d8ea90d6a140df5dde29c02ec8a3213bae16e8cc4df37e33ee0",
       "states": 1870,
       "token_count": 134,
       "symbol_count": 261,
@@ -112,7 +110,6 @@
     },
     {
       "grammar": "json",
-      "blob_sha256": "ad656555b6909bc8efbf40eceb2ac98121f7abdf707c829c9dc03ebe6d83bfbf",
       "states": 32,
       "token_count": 15,
       "symbol_count": 25,

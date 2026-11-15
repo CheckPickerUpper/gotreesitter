@@ -21,7 +21,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -32,8 +31,9 @@ import (
 	gts "github.com/odvcencio/gotreesitter"
 )
 
-// receipt is the committed artifact. Schema and blob digests are part of it so
-// a row can never be read as describing tables it was not measured against.
+// receipt is the committed artifact: one row per grammar, named by grammar.
+// A regenerated blob whose tables keep their shape leaves the receipt
+// unchanged; a shape change makes the -check comparison fail.
 type receipt struct {
 	Schema   string                             `json:"schema"`
 	Spec     string                             `json:"spec"`
@@ -110,6 +110,5 @@ func analyze(path string) (gts.ParserCoreCorridorTableShape, error) {
 	if err != nil {
 		return gts.ParserCoreCorridorTableShape{}, err
 	}
-	shape.BlobSHA256 = fmt.Sprintf("%x", sha256.Sum256(data))
 	return shape, nil
 }

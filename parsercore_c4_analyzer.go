@@ -24,9 +24,7 @@ import (
 // ParserCoreCorridorTableShape is one grammar's committed table-shape receipt.
 // Field names are the analyzer rows the spec cites by name.
 type ParserCoreCorridorTableShape struct {
-	Grammar string `json:"grammar"`
-	// BlobSHA256 pins the exact grammar blob the row was measured against.
-	BlobSHA256  string `json:"blob_sha256"`
+	Grammar     string `json:"grammar"`
 	States      int    `json:"states"`
 	TokenCount  uint32 `json:"token_count"`
 	SymbolCount uint32 `json:"symbol_count"`

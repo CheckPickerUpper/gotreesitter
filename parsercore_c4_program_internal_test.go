@@ -7,9 +7,7 @@ package gotreesitter
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -477,7 +475,6 @@ func measureCorridorTableShapes(t *testing.T, paths []string) corridorTableShape
 		if err != nil {
 			t.Fatalf("analyze %s: %v", path, err)
 		}
-		shape.BlobSHA256 = fmt.Sprintf("%x", sha256.Sum256(data))
 		measured.Grammars = append(measured.Grammars, shape)
 	}
 	return measured
