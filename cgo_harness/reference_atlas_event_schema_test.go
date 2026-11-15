@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"testing"
 )
 
@@ -41,11 +40,9 @@ type referenceAtlasEngine struct {
 }
 
 func TestReferenceAtlasEventSchemaIsCompleteAndHonest(t *testing.T) {
-	_, sourceFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("locate the reference-atlas schema test")
-	}
-	path := filepath.Join(filepath.Dir(sourceFile), "work_count", "reference_atlas_event_schema_v1.json")
+	// go test runs in this package's directory, whether or not the build
+	// trims file paths.
+	path := filepath.Join("work_count", "reference_atlas_event_schema_v1.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read reference-atlas schema: %v", err)
@@ -125,8 +122,7 @@ func validateReferenceAtlasEngine(t *testing.T, eventID, engine string, value re
 }
 
 func Example_referenceAtlasEventSchema() {
-	_, sourceFile, _, _ := runtime.Caller(0)
-	path := filepath.Join(filepath.Dir(sourceFile), "work_count", "reference_atlas_event_schema_v1.json")
+	path := filepath.Join("work_count", "reference_atlas_event_schema_v1.json")
 	data, _ := os.ReadFile(path)
 	var schema referenceAtlasSchema
 	_ = json.Unmarshal(data, &schema)

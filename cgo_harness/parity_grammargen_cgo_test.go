@@ -26,7 +26,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -1025,11 +1024,9 @@ func grammargenCGOGenerateTimeoutOverride() (time.Duration, bool, error) {
 // envBool and envInt are defined in parity_breaker_test.go.
 
 func defaultGrammargenCGOFloorsPath() string {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "cgo_harness/testdata/grammargen_cgo_parity_floors.json"
-	}
-	return filepath.Join(filepath.Dir(file), "testdata", "grammargen_cgo_parity_floors.json")
+	// go test runs in this package's directory, whether or not the build
+	// trims file paths.
+	return filepath.Join("testdata", "grammargen_cgo_parity_floors.json")
 }
 
 func loadGrammargenCGOFloors(path string) (grammargenCGOFloorFile, bool, error) {

@@ -869,11 +869,9 @@ func logRealCorpusDiag(stage, grammar, format string, args ...any) {
 }
 
 func defaultRealCorpusFloorsPath() string {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "grammargen/testdata/real_corpus_parity_floors.json"
-	}
-	return filepath.Join(filepath.Dir(file), "testdata", "real_corpus_parity_floors.json")
+	// go test runs in this package's directory, whether or not the build
+	// trims file paths.
+	return filepath.Join("testdata", "real_corpus_parity_floors.json")
 }
 
 func loadRealCorpusFloorFile(path string) (realCorpusFloorFile, bool, error) {

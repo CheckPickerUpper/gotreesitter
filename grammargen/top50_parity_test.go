@@ -3,7 +3,6 @@ package grammargen
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -86,11 +85,9 @@ func TestTop50GrammarImportParityCoverage(t *testing.T) {
 
 func loadTop50GrammarLockFile(t *testing.T) []string {
 	t.Helper()
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("locate top50 parity test file")
-	}
-	source, err := os.ReadFile(filepath.Join(filepath.Dir(filename), "..", "grammars", "update_tier1_top50.txt"))
+	// go test runs in this package's directory, whether or not the build
+	// trims file paths.
+	source, err := os.ReadFile(filepath.Join("..", "grammars", "update_tier1_top50.txt"))
 	if err != nil {
 		t.Fatalf("load top50 lock file: %v", err)
 	}
