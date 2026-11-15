@@ -130,7 +130,7 @@ func TestRecoverToAncestorOpenRegionPopsPriorError(t *testing.T) {
 }
 
 func TestRecoverToAncestorOpenRegionPriorErrorRollback(t *testing.T) {
-	for _, name := range []string{"ambiguous", "childless", "bad-span", "cost", "outer", "old-api"} {
+	for _, name := range []string{"ambiguous", "childless", "bad-span", "cost", "outer"} {
 		t.Run(name, func(t *testing.T) {
 			c, candidate, region, target, all := priorErrorAncestorFixture(t)
 			node, _ := c.node(target)
@@ -163,27 +163,12 @@ func TestRecoverToAncestorOpenRegionPriorErrorRollback(t *testing.T) {
 			}
 			before := captureSchedulerTransactionState(c)
 			err = c.ApplySchedulerAtomic(func(owner SchedulerTransactionToken) error {
-				if name == "old-api" {
-					_, err := c.RecoverToAncestorStateWithCostOwned(owner, candidate, func(prev NodeID, _ SubtreeID) (uint32, error) {
-						if prev != target {
-							t.Fatal("old API popped the prior ERROR")
-						}
-						return 803, nil
-					})
-					return err
-				}
 				_, _ = c.RecoverToAncestorStateWithOpenRegionAndCostOwned(owner, candidate, 2, 3, []SubtreeID{region}, cost)
 				if name == "outer" {
 					return sentinel
 				}
 				return nil
 			})
-			if name == "old-api" {
-				if err != nil {
-					t.Fatal(err)
-				}
-				return
-			}
 			if err == nil {
 				t.Fatal("invalid prior ERROR committed")
 			}

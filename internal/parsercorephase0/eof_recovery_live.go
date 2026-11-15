@@ -40,51 +40,11 @@ func (c *Core) RecoverEOFAcceptOwned(
 	return out, root, nil
 }
 
-// RecoverEOFAcceptWithCostOwned publishes the synthetic ERROR root with its
-// authenticated cumulative cost. The root replaces the old path, so its cost
-// does not inherit the predecessor path cost.
-func (c *Core) RecoverEOFAcceptWithCostOwned(
-	owner SchedulerTransactionToken,
-	head Head,
-	payloads []SubtreeID,
-	startByte uint32,
-	endByte uint32,
-	cost ReductionOutputCostFunc,
-) (out Head, root SubtreeID, err error) {
-	if c == nil {
-		return Head{}, 0, errors.New("parser-core phase zero: recover_eof accept on nil core")
-	}
-	err = c.RunSchedulerOwned(owner, func() error {
-		if cost == nil {
-			return errors.New("parser-core phase zero: recover_eof cost callback is required")
-		}
-		var operationErr error
-		out, root, operationErr = c.recoverEOFAcceptUncheckpointedWithCost(
-			head, payloads, startByte, endByte, cost,
-		)
-		return operationErr
-	})
-	if err != nil {
-		return Head{}, 0, err
-	}
-	return out, root, nil
-}
-
 func (c *Core) recoverEOFAcceptUncheckpointed(
 	head Head,
 	payloads []SubtreeID,
 	startByte uint32,
 	endByte uint32,
-) (Head, SubtreeID, error) {
-	return c.recoverEOFAcceptUncheckpointedWithCost(head, payloads, startByte, endByte, nil)
-}
-
-func (c *Core) recoverEOFAcceptUncheckpointedWithCost(
-	head Head,
-	payloads []SubtreeID,
-	startByte uint32,
-	endByte uint32,
-	cost ReductionOutputCostFunc,
 ) (Head, SubtreeID, error) {
 	if head.Node == 0 {
 		return Head{}, 0, errors.New("parser-core phase zero: recover_eof accept requires a head")
@@ -111,7 +71,7 @@ func (c *Core) recoverEOFAcceptUncheckpointedWithCost(
 	if err := c.validateRecoverEOFAcceptPayloads(payloads, startByte, endByte); err != nil {
 		return Head{}, 0, err
 	}
-	return c.publishRecoverEOFAcceptUncheckpointed(payloads, startByte, endByte, 0, cost)
+	return c.publishRecoverEOFAcceptUncheckpointed(payloads, startByte, endByte, 0, nil)
 }
 
 func (c *Core) publishRecoverEOFAcceptUncheckpointed(

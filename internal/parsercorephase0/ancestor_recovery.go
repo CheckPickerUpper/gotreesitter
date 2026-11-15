@@ -230,27 +230,7 @@ func (c *Core) RecoverToAncestorStateOwned(owner SchedulerTransactionToken, cand
 		return out, err
 	}
 	defer c.recoverSchedulerOwnedPanic(owner)
-	out, err = c.recoverToAncestorStateUncheckpointed(candidate, nil)
-	return out, c.finishSchedulerOwned(owner, err)
-}
-
-// RecoverToAncestorStateWithCostOwned publishes the complete cumulative cost
-// of the ERROR link and each trailing extra link before boundary publication.
-// The callback must return the authenticated cost for its complete output.
-func (c *Core) RecoverToAncestorStateWithCostOwned(
-	owner SchedulerTransactionToken,
-	candidate StackSummaryCandidate,
-	cost ReductionOutputCostFunc,
-) (out Head, err error) {
-	if err = c.beginSchedulerOwned(owner); err != nil {
-		return out, err
-	}
-	defer c.recoverSchedulerOwnedPanic(owner)
-	if cost == nil {
-		err = errors.New("parser-core phase zero: ancestor recovery cost callback is required")
-		return out, c.finishSchedulerOwned(owner, err)
-	}
-	out, err = c.recoverToAncestorStateUncheckpointed(candidate, cost)
+	out, err = c.recoverToAncestorStateWithRegionUncheckpointed(candidate, nil, nil)
 	return out, c.finishSchedulerOwned(owner, err)
 }
 
@@ -299,10 +279,6 @@ func (c *Core) StackSummaryCandidateRecoverable(candidate StackSummaryCandidate)
 		return false, err
 	}
 	return true, nil
-}
-
-func (c *Core) recoverToAncestorStateUncheckpointed(candidate StackSummaryCandidate, cost ReductionOutputCostFunc) (Head, error) {
-	return c.recoverToAncestorStateWithRegionUncheckpointed(candidate, cost, nil)
 }
 
 func (c *Core) recoverToAncestorStateWithRegionUncheckpointed(candidate StackSummaryCandidate, cost ReductionOutputCostFunc, region *ancestorRecoveryOpenRegion) (Head, error) {
