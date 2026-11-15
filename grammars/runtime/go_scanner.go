@@ -217,11 +217,11 @@ func (s GoExternalScanner) Scan(payload any, lexer *gotreesitter.ExternalLexer, 
 
 func goValidSym(vs []bool, i int) bool { return i < len(vs) && vs[i] }
 
-// ExcludesMissingVersionTurnsForIncludedRanges contains one artifact's
-// unqualified mode rollout. Ordinary parsing retains its exact certification.
+// ExcludesMissingVersionTurnsForIncludedRanges keeps included-range parses on
+// the prior recovery policy. Ordinary parsing retains its certification.
 // Reopen this entry after range-aware internal/external token cursors and
 // missing-version recovery pass complete locked-C range-tree comparisons.
 // This preserves the prior range recovery policy; it is not range parity.
-func (GoExternalScanner) ExcludesMissingVersionTurnsForIncludedRanges(blobSHA256 [32]byte) bool {
-	return blobSHA256 == [32]byte{0x44, 0x56, 0xf9, 0xb1, 0x17, 0x06, 0xfa, 0xce, 0x73, 0xbd, 0x51, 0x1d, 0x6e, 0x80, 0xbb, 0xd2, 0xf0, 0xd4, 0x68, 0x05, 0x50, 0x65, 0x29, 0x6d, 0xb6, 0xf5, 0x33, 0x4f, 0xa1, 0x01, 0xd3, 0x79}
+func (GoExternalScanner) ExcludesMissingVersionTurnsForIncludedRanges() bool {
+	return true
 }

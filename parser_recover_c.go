@@ -935,8 +935,7 @@ func (p *Parser) recoveryMissingVersionTurnsCertified() bool {
 	if !certified || len(p.included) == 0 {
 		return certified
 	}
-	identity, known := p.language.GrammarBlobSHA256()
-	return recoveryturn.MissingVersionTurnsForIncludedRanges(certified, identity, known, p.language.ExternalScanner)
+	return recoveryturn.MissingVersionTurnsForIncludedRanges(certified, p.language.ExternalScanner)
 }
 
 func (p *Parser) errorCostCompetitionEnabled() bool {
