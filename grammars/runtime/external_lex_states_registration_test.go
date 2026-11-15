@@ -6,7 +6,6 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -22,11 +21,9 @@ import (
 // empty external lex states table. Both are static wiring bugs this test
 // catches without needing to run any parser.
 func TestExternalLexStatesRegisteredExactlyOnce(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller(0) failed to resolve this test file's path")
-	}
-	dir := filepath.Dir(thisFile)
+	// go test runs a package's tests in the package's source directory, so
+	// "." names it whether or not the build trims file paths.
+	dir := "."
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {

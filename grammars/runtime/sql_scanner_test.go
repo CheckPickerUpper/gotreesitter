@@ -7,8 +7,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	_ "unsafe"
@@ -103,11 +101,9 @@ func TestSQLScannerCheckpointIdentityBindsExactGrammarBlob(t *testing.T) {
 }
 
 func TestSQLScannerIdentityBindsLocalPortSource(t *testing.T) {
-	_, testFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	source, err := os.ReadFile(filepath.Join(filepath.Dir(testFile), "sql_scanner.go"))
+	// go test runs in this package's directory, whether or not the build
+	// trims file paths.
+	source, err := os.ReadFile("sql_scanner.go")
 	if err != nil {
 		t.Fatalf("read SQL scanner source: %v", err)
 	}

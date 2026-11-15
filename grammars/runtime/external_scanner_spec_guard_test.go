@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -17,11 +16,9 @@ type lockPin struct{ repo, commit string }
 // readLanguagesLock parses grammars/languages.lock: "name repo commit ...".
 func readLanguagesLock(t *testing.T) map[string]lockPin {
 	t.Helper()
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller(0) failed to resolve this test file's path")
-	}
-	path := filepath.Join(filepath.Dir(thisFile), "..", "languages.lock")
+	// go test runs in this package's directory, whether or not the build
+	// trims file paths.
+	path := filepath.Join("..", "languages.lock")
 	f, err := os.Open(path)
 	if err != nil {
 		t.Fatalf("open %s: %v", path, err)

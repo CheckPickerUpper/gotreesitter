@@ -7,8 +7,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
-	"path/filepath"
-	"runtime"
 	"slices"
 	"testing"
 	_ "unsafe"
@@ -207,11 +205,9 @@ func TestScalaScannerAdaptationStaysConservative(t *testing.T) {
 }
 
 func TestScalaScannerIdentityBindsLocalPortSource(t *testing.T) {
-	_, testFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	source, err := os.ReadFile(filepath.Join(filepath.Dir(testFile), "scala_scanner.go"))
+	// go test runs in this package's directory, whether or not the build
+	// trims file paths.
+	source, err := os.ReadFile("scala_scanner.go")
 	if err != nil {
 		t.Fatalf("read Scala scanner source: %v", err)
 	}
