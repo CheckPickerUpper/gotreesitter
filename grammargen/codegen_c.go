@@ -797,30 +797,20 @@ func emitLexFunction(b *strings.Builder, funcName string, states []gotreesitter.
 			fmt.Fprintf(b, "      if (eof) END_STATE();\n")
 		}
 
-		// Character transitions. A transition that consumes a skippable extra
-		// (whitespace, or any other silently-dropped extra) must use SKIP so
-		// the runtime advances past the character as trivia and re-lexes for
-		// a real token, rather than accepting it. grammargen models a silent
-		// extra two ways:
-		//
-		//   - An explicit skip edge (tr.Skip): addWhitespaceSkip only ever
-		//     adds these on a mode's own start state and always targets that
-		//     same start state (tr.NextState), so SKIP(tr.NextState) is
-		//     already correct as written.
-		//   - An edge into a terminal skip-accept state: this fires on
-		//     whichever state currently owns the transition, which for a
-		//     multi-character extra (CRLF, backslash-newline continuations)
-		//     is an intermediate mid-token state, not the mode's start state.
-		//     SKIP's target must still be the mode-start state — re-lexing
-		//     from the intermediate state would resume from a DFA state that
-		//     only recognizes the extra's continuation, not a fresh token —
-		//     so this uses modeStartOf(modeStarts, i), the start state of the
-		//     mode that contains state i, rather than i itself.
+		// Character transitions. A transition into a separator's skip-accept
+		// state must use SKIP so the runtime advances past the separator as
+		// trivia and re-lexes for a real token, rather than accepting it.
+		// The edge fires on whichever state currently owns the transition,
+		// which for a multi-character separator (CRLF, backslash-newline
+		// continuations) is an intermediate mid-token state, not the mode's
+		// start state. SKIP's target must still be the mode-start state —
+		// re-lexing from the intermediate state would resume from a DFA state
+		// that only recognizes the separator's continuation, not a fresh
+		// token — so this uses modeStartOf(modeStarts, i), the start state of
+		// the mode that contains state i, rather than i itself.
 		for _, tr := range st.Transitions {
 			cond := charCondition(tr.Lo, tr.Hi)
 			switch {
-			case tr.Skip:
-				fmt.Fprintf(b, "      if (%s) SKIP(%d);\n", cond, tr.NextState)
 			case tr.NextState >= 0 && tr.NextState < len(states) && states[tr.NextState].Skip:
 				fmt.Fprintf(b, "      if (%s) SKIP(%d);\n", cond, modeStartOf(modeStarts, i))
 			default:

@@ -1111,11 +1111,9 @@ func collectStringLiterals(g *Grammar) []string {
 		}
 	}
 
-	// Walk extras first (they may contain patterns).
-	for _, e := range g.Extras {
-		walk(e, false)
-	}
-	// Walk rules in definition order.
+	// Walk rules in definition order. Extras are not walked: tree-sitter's
+	// extract_tokens never extracts tokens from them, so a string extra is a
+	// token only when a rule also uses it, and a separator otherwise.
 	for _, name := range g.RuleOrder {
 		if namedPlainStringRules[name] {
 			continue
@@ -2521,19 +2519,68 @@ func flattenPreparedRules(grammarName string, nonterminals []string, processedRu
 	return nextProcessed, nextAux
 }
 
-// registerExtraTerminals pre-registers terminal symbols from extras
-// so they get contiguous IDs before nonterminals.
+// registerExtraTerminals pre-registers the terminal the grammar's separators
+// lex as, so it gets a contiguous ID before nonterminals.
 func registerExtraTerminals(g *Grammar, st *symbolTable) {
-	for _, e := range g.Extras {
-		if e == nil {
+	if len(separatorRules(g, st)) > 0 {
+		st.getOrAdd("_whitespace", SymbolInfo{
+			Name: "_whitespace", Visible: false, Named: false, Kind: SymbolTerminal,
+		})
+	}
+}
+
+// separatorRules returns the extras the lexer skips between tokens, split by
+// the rule of tree-sitter's extract_tokens: an extra that names a rule stays
+// a symbol extra, an extra equal to a token the grammar already lexes becomes
+// that token, and every other extra, pattern or string, is a separator. A
+// grammar whose extras only name rules, such as YAML's [comment], has no
+// separators, so its lexer skips nothing.
+func separatorRules(g *Grammar, st *symbolTable) []*Rule {
+	var separators []*Rule
+	for _, extra := range g.Extras {
+		if extra == nil || extra.Kind == RuleSymbol {
 			continue
 		}
-		if e.Kind == RulePattern {
-			st.getOrAdd("_whitespace", SymbolInfo{
-				Name: "_whitespace", Visible: false, Named: false, Kind: SymbolTerminal,
-			})
+		if _, isToken := extraLexicalToken(g, st, extra); isToken {
+			continue
+		}
+		separators = append(separators, extra)
+	}
+	return separators
+}
+
+// extraLexicalToken returns the terminal of a token the grammar already lexes
+// whose rule equals extra: a string literal, an inline pattern, or a named
+// token whose body, inside token(), equals the extra. extract_tokens makes
+// such an extra that terminal rather than a separator.
+func extraLexicalToken(g *Grammar, st *symbolTable, extra *Rule) (int, bool) {
+	isTerminal := func(id int) bool {
+		kind := st.symbols[id].Kind
+		return kind == SymbolTerminal || kind == SymbolNamedToken
+	}
+	switch extra.Kind {
+	case RuleString:
+		if id, ok := st.lookup(extra.Value); ok && isTerminal(id) && !st.symbols[id].Named {
+			return id, true
+		}
+	case RulePattern:
+		if id, ok := st.lookup(inlinePatternSymbolKey(extra.Value)); ok && isTerminal(id) {
+			return id, true
 		}
 	}
+	for _, name := range g.RuleOrder {
+		body := g.Rules[name]
+		if body != nil && body.Kind == RuleToken && len(body.Children) == 1 {
+			body = body.Children[0]
+		}
+		if !rulesEqual(body, extra) {
+			continue
+		}
+		if id, ok := st.lookupNamedToken(name); ok && isTerminal(id) {
+			return id, true
+		}
+	}
+	return 0, false
 }
 
 // registerExternalSymbols registers external scanner symbols from g.Externals.
@@ -2617,20 +2664,21 @@ func resolveExtras(g *Grammar, st *symbolTable) []int {
 		if e == nil {
 			continue
 		}
-		switch e.Kind {
-		case RulePattern:
-			if id, ok := st.lookup("_whitespace"); ok {
-				addExtra(id)
-			}
-			appendMatchingExternalPatternExtras(e.Value)
-		case RuleSymbol:
+		if e.Kind == RuleSymbol {
 			if id, ok := st.lookupNonterm(e.Value); ok {
 				addExtra(id)
 			}
-		case RuleString:
-			if id, ok := st.lookup(e.Value); ok {
-				addExtra(id)
-			}
+			continue
+		}
+		if id, isToken := extraLexicalToken(g, st, e); isToken {
+			addExtra(id)
+			continue
+		}
+		if id, ok := st.lookup("_whitespace"); ok {
+			addExtra(id)
+		}
+		if e.Kind == RulePattern {
+			appendMatchingExternalPatternExtras(e.Value)
 		}
 	}
 	return extras
@@ -2876,21 +2924,19 @@ func extractTerminals(g *Grammar, st *symbolTable, stringLits []string, namedTok
 		})
 	}
 
-	// Extra patterns (like /\s/).
-	for _, e := range g.Extras {
-		if e != nil && e.Kind == RulePattern {
-			id, ok := st.lookup("_whitespace")
-			if !ok {
-				continue
+	// Separators (like /\s/): every one lexes as the skipped _whitespace
+	// terminal.
+	if id, ok := st.lookup("_whitespace"); ok {
+		for _, separator := range separatorRules(g, st) {
+			if separator.Kind == RulePattern {
+				if extras, ok := cSplitLineContinuationExtraPattern(g, separator.Value, id); ok {
+					patterns = append(patterns, extras...)
+					continue
+				}
 			}
-			extras, ok := cSplitLineContinuationExtraPattern(g, e.Value, id)
-			if ok {
-				patterns = append(patterns, extras...)
-				continue
-			}
-			expanded, err := expandPatternRule(e.Value)
+			expanded, err := flattenTokenInner(separator)
 			if err != nil {
-				return nil, fmt.Errorf("expand extra pattern: %w", err)
+				return nil, fmt.Errorf("expand extra separator: %w", err)
 			}
 			patterns = append(patterns, TerminalPattern{
 				SymbolID: id,

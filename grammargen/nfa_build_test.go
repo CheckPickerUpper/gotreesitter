@@ -44,7 +44,7 @@ func TestNULStringTerminalIsZeroWidth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("subsetConstruction: %v", err)
 	}
-	lexStates := convertDFAToLexStates(dfa, false)
+	lexStates := convertDFAToLexStates(dfa)
 	if len(lexStates) == 0 {
 		t.Fatal("no lex states generated")
 	}
@@ -94,7 +94,7 @@ func TestBuildPatternExpandsNegatedShorthandInsideCharClass(t *testing.T) {
 	if err != nil {
 		t.Fatalf("subsetConstruction: %v", err)
 	}
-	lexStates := convertDFAToLexStates(dfa, false)
+	lexStates := convertDFAToLexStates(dfa)
 
 	for _, input := range []string{"*", " ", "S", "\n", "x"} {
 		lexer := gotreesitter.NewLexer(lexStates, []byte(input))

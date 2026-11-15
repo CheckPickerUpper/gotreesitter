@@ -114,7 +114,7 @@ func buildLexDFA(ctx context.Context, patterns []TerminalPattern, extraSymbols [
 		protectStringOperatorsFromLineComments(dfa, modePatterns)
 
 		// Convert to LexState format.
-		lexStates := convertDFAToLexStates(dfa, mode.skipWhitespace)
+		lexStates := convertDFAToLexStates(dfa)
 
 		// Offset all transition targets and skip-loop targets to account
 		// for concatenation with previous modes' states.
@@ -164,7 +164,7 @@ func buildLexDFA(ctx context.Context, patterns []TerminalPattern, extraSymbols [
 type lexModeSpec struct {
 	validSymbols     map[int]bool // terminal symbol IDs valid in this mode
 	preferredSymbols map[int]bool // symbols directly valid in this mode; win same-span DFA ties
-	skipWhitespace   bool         // whether to add skip transitions for whitespace
+	skipWhitespace   bool         // whether the mode's lexer skips the grammar's separators
 }
 
 // errorRecoveryLexMode retains the initial mode's pattern tokens and adds
@@ -1080,16 +1080,11 @@ func sameIntSlice(a, b []int) bool {
 }
 
 // convertDFAToLexStates converts internal DFA states to gotreesitter LexState format.
-func convertDFAToLexStates(dfa []dfaState, addSkipTransitions bool) []gotreesitter.LexState {
+func convertDFAToLexStates(dfa []dfaState) []gotreesitter.LexState {
 	states := make([]gotreesitter.LexState, len(dfa))
 	totalTransitions := 0
 	for i := range dfa {
 		totalTransitions += len(dfa[i].transitions)
-	}
-	// Reserve room for up to three whitespace skip transitions on the mode's
-	// start state so addWhitespaceSkip can grow in place.
-	if addSkipTransitions && len(dfa) > 0 {
-		totalTransitions += 3
 	}
 	transitionBuf := make([]gotreesitter.LexTransition, totalTransitions)
 	bufPos := 0
@@ -1115,11 +1110,7 @@ func convertDFAToLexStates(dfa []dfaState, addSkipTransitions bool) []gotreesitt
 		}
 
 		if len(ds.transitions) > 0 {
-			extraCap := 0
-			if addSkipTransitions && i == 0 {
-				extraCap = 3
-			}
-			ls.Transitions = transitionBuf[bufPos : bufPos+len(ds.transitions) : bufPos+len(ds.transitions)+extraCap]
+			ls.Transitions = transitionBuf[bufPos : bufPos+len(ds.transitions) : bufPos+len(ds.transitions)]
 			for j, t := range ds.transitions {
 				ls.Transitions[j] = gotreesitter.LexTransition{
 					Lo:        t.lo,
@@ -1127,74 +1118,16 @@ func convertDFAToLexStates(dfa []dfaState, addSkipTransitions bool) []gotreesitt
 					NextState: t.nextState,
 				}
 			}
-			bufPos += len(ds.transitions) + extraCap
+			bufPos += len(ds.transitions)
 			// Release the source edge slice once it has been copied so the DFA
 			// graph does not stay fully duplicated through the rest of conversion.
 			ds.transitions = nil
-		} else if addSkipTransitions && i == 0 {
-			ls.Transitions = transitionBuf[bufPos : bufPos : bufPos+3]
-			bufPos += 3
 		}
 
 		states[i] = ls
 	}
 
-	// For the start state (index 0, local), add skip transitions for whitespace
-	// characters if requested. The skip transitions loop back to state 0 (local).
-	// The offset adjustment happens later during concatenation.
-	if addSkipTransitions && len(states) > 0 {
-		addWhitespaceSkip(&states[0])
-	}
-
 	return states
-}
-
-// addWhitespaceSkip modifies the start state to have skip transitions for
-// whitespace characters (\t, \n, \r, space). These transitions loop back
-// to the start state with Skip=true.
-//
-// IMPORTANT: We must NOT mark existing DFA transitions as Skip. Existing
-// transitions were created by real terminal patterns (e.g., \r?\n) and must
-// remain non-skip so the lexer can match them as real tokens. We only add
-// NEW skip transitions for whitespace characters that have no existing
-// transition. The DFA already handles whitespace via the extra symbol's
-// accepting states (LexState.Skip = true).
-func addWhitespaceSkip(state *gotreesitter.LexState) {
-	wsRanges := []runeRange{
-		{'\t', '\n'}, // \t and \n
-		{'\r', '\r'}, // \r
-		{' ', ' '},   // space
-	}
-
-	for _, ws := range wsRanges {
-		// Check if ANY existing transition overlaps with this whitespace range.
-		// If so, leave it alone — a real terminal needs that character range.
-		// We only add skip transitions for characters that have no existing
-		// DFA path, because the DFA already handles extras via accept-state
-		// Skip flags.
-		overlaps := false
-		for i := range state.Transitions {
-			t := &state.Transitions[i]
-			// Check if the ranges overlap at all.
-			if t.Lo <= ws.hi && t.Hi >= ws.lo {
-				overlaps = true
-				break
-			}
-		}
-		if !overlaps {
-			state.Transitions = append(state.Transitions, gotreesitter.LexTransition{
-				Lo:        ws.lo,
-				Hi:        ws.hi,
-				NextState: 0, // loops back to start state (local index)
-				Skip:      true,
-			})
-		}
-	}
-
-	// Sort transitions by Lo for deterministic behavior.
-	sort.Slice(state.Transitions, func(i, j int) bool {
-		return state.Transitions[i].Lo < state.Transitions[j].Lo
-	})
 }
 
 // pruneImmediateTransitions removes continuations that reach only unpreferred,
