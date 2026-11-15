@@ -221,7 +221,6 @@ outline_golden_test.go
 outline_internal_test.go
 outline_owner.go
 outline_report.go
-packed_version_advance.go
 parse_dispatch.go
 parse_helpers_test.go
 parse_progress_telemetry.go
@@ -259,11 +258,9 @@ parser_external_scanner_prefix_frontier_test.go
 parser_extra_shift_test.go
 parser_full_parse_ownership_test.go
 parser_fullparse_retry_test.go
-parser_go_merge_keeps_last_reading_test.go
 parser_go_newmake_edge_test.go
 parser_go_newmake_fix_test.go
 parser_go_newmake_residual_test.go
-parser_go_range_overflow_test.go
 parser_go_regression_test.go
 parser_go_scanner_quiescence_test.go
 parser_go_test.go
