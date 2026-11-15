@@ -2007,6 +2007,45 @@ func ruleReachesAlias(r *Rule, gRules map[string]*Rule, seen map[string]bool, de
 	return false
 }
 
+// helperNumbers numbers the helper nonterminals normalization lifts out of
+// each rule. tree-sitter's expand_repeats numbers a rule's repeat helpers
+// from 1 within that rule (a rule's first repeat helper is <rule>_repeat1), so
+// each kind of helper counts within the rule that produced it.
+type helperNumbers struct {
+	repeats      helperKind
+	choiceLifts  helperKind
+	aliasRepeats helperKind
+}
+
+// helperKind is one kind of lifted helper: the name format its helpers take
+// and how many of them each rule has named so far.
+type helperKind struct {
+	format string
+	counts map[string]int
+}
+
+// newHelperNumbers returns numbering with no helper named yet, each kind
+// carrying its own name format.
+func newHelperNumbers() *helperNumbers {
+	return &helperNumbers{
+		repeats:      helperKind{format: "%s_repeat%d", counts: map[string]int{}},
+		choiceLifts:  helperKind{format: "_%s_choice_lift%d", counts: map[string]int{}},
+		aliasRepeats: helperKind{format: "%s_alias_repeat%d", counts: map[string]int{}},
+	}
+}
+
+// next returns the name of rule's next helper of this kind, skipping any
+// number whose name a symbol already holds.
+func (kind *helperKind) next(st *symbolTable, rule string) string {
+	for {
+		kind.counts[rule]++
+		name := fmt.Sprintf(kind.format, rule, kind.counts[rule])
+		if _, taken := st.lookupNonterm(name); !taken {
+			return name
+		}
+	}
+}
+
 // prepareRule normalizes a rule tree for production extraction:
 //   - Expands Optional(x) → Choice(x, Blank())
 //   - Replaces Repeat(x) and Repeat1(x) with auxiliary nonterminal symbols
@@ -2014,33 +2053,6 @@ func ruleReachesAlias(r *Rule, gRules map[string]*Rule, seen map[string]bool, de
 //     alias attaches to a single child slot
 //
 // This handles repeat/repeat1 at ALL levels including the root.
-// helperNumbers numbers the helper nonterminals normalization lifts out of
-// each rule. tree-sitter's expand_repeats numbers a rule's repeat helpers
-// from 1 within that rule (a rule's first repeat helper is <rule>_repeat1), so
-// each kind of helper counts within the rule that produced it.
-type helperNumbers struct {
-	repeats      map[string]int
-	choiceLifts  map[string]int
-	aliasRepeats map[string]int
-}
-
-// newHelperNumbers returns numbering with no helper named yet.
-func newHelperNumbers() *helperNumbers {
-	return &helperNumbers{repeats: map[string]int{}, choiceLifts: map[string]int{}, aliasRepeats: map[string]int{}}
-}
-
-// name returns the name format gives rule's next helper of the kind counts
-// numbers, skipping any number whose name a symbol already holds.
-func (numbers *helperNumbers) name(counts map[string]int, st *symbolTable, format, rule string) string {
-	for {
-		counts[rule]++
-		name := fmt.Sprintf(format, rule, counts[rule])
-		if _, taken := st.lookupNonterm(name); !taken {
-			return name
-		}
-	}
-}
-
 func prepareRule(r *Rule, parentName string, st *symbolTable, auxRules map[string]*Rule, auxOrigins map[string]map[string]bool, numbers *helperNumbers) *Rule {
 	return prepareRuleUnderAssociativity(r, parentName, nil, st, auxRules, auxOrigins, numbers)
 }
@@ -2133,7 +2145,7 @@ func prepareRuleUnderAssociativity(r *Rule, parentName string, enclosingAssociat
 				repeatNode = repeatNode.Children[0]
 			}
 
-			auxName := numbers.name(numbers.aliasRepeats, st, "%s_alias_repeat%d", parentName)
+			auxName := numbers.aliasRepeats.next(st, parentName)
 			st.addSymbol(auxName, SymbolInfo{
 				Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal,
 			})
@@ -2212,7 +2224,7 @@ func maybeExtractWideChoice(r *Rule, parentName string, st *symbolTable, auxRule
 	if len(r.Children) <= st.choiceLiftThreshold {
 		return r
 	}
-	auxName := numbers.name(numbers.choiceLifts, st, "_%s_choice_lift%d", parentName)
+	auxName := numbers.choiceLifts.next(st, parentName)
 	st.addSymbol(auxName, SymbolInfo{
 		Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal,
 	})
@@ -2305,7 +2317,7 @@ func liftLargeSeqChoices(seq *Rule, parentName string, st *symbolTable, auxRules
 			break
 		}
 
-		auxName := numbers.name(numbers.choiceLifts, st, "_%s_choice_lift%d", parentName)
+		auxName := numbers.choiceLifts.next(st, parentName)
 		st.addSymbol(auxName, SymbolInfo{
 			Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal,
 		})
@@ -2331,7 +2343,7 @@ func ensureRepeatAuxLinear(parentName string, inner *Rule, enclosingAssociativit
 			return auxName
 		}
 	}
-	auxName := numbers.name(numbers.repeats, st, "%s_repeat%d", parentName)
+	auxName := numbers.repeats.next(st, parentName)
 	st.addSymbol(auxName, SymbolInfo{
 		Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal, GeneratedRepeatAux: true,
 	})
@@ -2355,7 +2367,7 @@ func ensureRepeatAuxBinary(parentName string, inner *Rule, enclosingAssociativit
 			return auxName
 		}
 	}
-	auxName := numbers.name(numbers.repeats, st, "%s_repeat%d", parentName)
+	auxName := numbers.repeats.next(st, parentName)
 	st.addSymbol(auxName, SymbolInfo{
 		Name: auxName, Visible: false, Named: false, Kind: SymbolNonterminal, GeneratedRepeatAux: true,
 	})
