@@ -55,6 +55,15 @@ func buildLexDFA(ctx context.Context, patterns []TerminalPattern, extraSymbols [
 		if len(mode.preferredSymbols) > 0 {
 			modePatterns = preferModePatterns(modePatterns, mode.preferredSymbols)
 		}
+		if !modeHasToken(modePatterns, skipExtras) {
+			// tree-sitter's lex table builder gives a token set with no
+			// terminal an empty NFA state set, and a state with no NFA
+			// states accepts the end token wherever the lexer reaches it.
+			// Separators exist only in front of a token, so the mode skips
+			// nothing.
+			allStates = append(allStates, gotreesitter.LexState{AcceptEOF: true, Default: -1, EOF: -1})
+			continue
+		}
 
 		// Build combined NFA for this mode's terminals.
 		combined, err := buildCombinedNFA(modePatterns)
@@ -158,6 +167,17 @@ func buildLexDFA(ctx context.Context, patterns []TerminalPattern, extraSymbols [
 	}
 
 	return allStates, modeOffsets, nil
+}
+
+// modeHasToken reports whether a lex mode's patterns include a terminal other
+// than a separator the lexer skips.
+func modeHasToken(modePatterns []TerminalPattern, skipExtras map[int]bool) bool {
+	for _, pattern := range modePatterns {
+		if !skipExtras[pattern.SymbolID] {
+			return true
+		}
+	}
+	return false
 }
 
 // lexModeSpec describes what a lex mode should recognize.

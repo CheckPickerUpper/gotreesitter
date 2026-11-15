@@ -584,6 +584,7 @@ func finalizeReturnedTreeRootSpan(tree *Tree, source []byte) {
 	rt := *tree.rawParseRuntime()
 	if rt.StopReason == ParseStopAccepted {
 		extendRootToAcceptedCleanTail(root, source, rt.ExpectedEOFByte, tree.includedRanges, continuationEscape)
+		endRootAtLexedEndToken(root, source, rt, tree.includedRanges)
 	}
 	rt.RootEndByte = root.endByte
 	rt.Truncated = rt.ExpectedEOFByte > root.endByte
@@ -658,6 +659,20 @@ func extendRootToAcceptedCleanTail(root *Node, source []byte, expectedEOFByte ui
 	}
 	extendNodeEndToByte(root, source, expectedEOFByte)
 	return root.endByte >= expectedEOFByte
+}
+
+// endRootAtLexedEndToken ends an accepted root at the end token when a lex
+// state accepted that token before the source ended. The bytes after it were
+// never parsed, so, as in C, the root does not cover them; trailing-whitespace
+// coverage and result normalization must not extend it past that token.
+func endRootAtLexedEndToken(root *Node, source []byte, rt ParseRuntime, included []Range) {
+	endByte := rt.ExpectedEOFByte
+	if root == nil || len(included) != 0 || !rt.LastTokenWasEOF || rt.LastTokenEndByte != endByte ||
+		endByte >= rt.SourceLen || int(rt.SourceLen) != len(source) || root.endByte <= endByte || root.startByte > endByte {
+		return
+	}
+	root.endPoint = advancePointByBytes(root.startPoint, source[root.startByte:endByte])
+	root.endByte = endByte
 }
 
 func extendNodeEndToByte(n *Node, source []byte, endByte uint32) {

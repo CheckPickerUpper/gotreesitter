@@ -44,7 +44,7 @@ func TestLexerReadSpanFailedPrimitiveAndKeyword(t *testing.T) {
 	lang.KeywordLexStates = lang.LexStates
 	d := newDFATokenSourceDirectWithCRecovery(NewLexer(lang.LexStates, []byte("=i")), lang, nil, nil, nil, nil, false)
 	defer d.Close()
-	if _, ok := d.lexer.scan(0, 0, 0, 0); ok {
+	if _, outcome := d.lexer.scan(0, 0, 0, 0); outcome != lexScanFailed {
 		t.Fatal("failed fixture accepted")
 	}
 	if d.tokenInvariantReadSpan() != 3 {

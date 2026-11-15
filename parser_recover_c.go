@@ -1042,12 +1042,16 @@ func (p *Parser) cRecoverResumeLookahead(ts TokenSource, source []byte, s *glrSt
 				break
 			}
 			startPos := probe.pos
-			t2, ok := probe.scan(uint32(stateLS), probe.pos, probe.row, probe.col)
-			if !ok {
+			t2, outcome := probe.scan(uint32(stateLS), probe.pos, probe.row, probe.col)
+			if outcome == lexScanFailed {
 				stateLexFails = true
 				break
 			}
-			if t2.Symbol == 0 {
+			if outcome == lexScanEnd {
+				// The state's mode lexes the end token here.
+				break
+			}
+			if outcome == lexScanSkipped {
 				if probe.pos <= startPos {
 					break
 				}
@@ -4119,8 +4123,8 @@ func (p *Parser) cHandleError(stacks *[]glrStack, si int, source []byte, tok Tok
 						}
 						probe := &p.relexProbeLexer
 						*probe = Lexer{states: p.language.LexStates, asciiTable: p.language.LexAsciiTable(), source: source, pos: int(tok.lexerSkippedPrefixStart), row: row, col: col, immediateTokens: p.language.ImmediateTokens, zeroWidthTokens: p.language.ZeroWidthTokens}
-						probeTok, scanned := probe.scan(p.language.LexModes[reducedState].LexStateIndex(), probe.pos, row, col)
-						if !scanned || probeTok.StartByte != tok.StartByte || probeTok.EndByte != tok.EndByte || probeTok.Symbol != tok.Symbol {
+						probeTok, outcome := probe.scan(p.language.LexModes[reducedState].LexStateIndex(), probe.pos, row, col)
+						if outcome == lexScanFailed || probeTok.StartByte != tok.StartByte || probeTok.EndByte != tok.EndByte || probeTok.Symbol != tok.Symbol {
 							compatible = false
 							break
 						}
@@ -6245,9 +6249,9 @@ func (p *Parser) relexTokenForStackLexState(
 			probe.setIncludedRanges(p.included)
 		}
 		probeStart := probe.pos
-		relexed, ok := probe.scan(uint32(ls), probe.pos, probe.row, probe.col)
+		relexed, outcome := probe.scan(uint32(ls), probe.pos, probe.row, probe.col)
 		frontier := relexed.lexerLookaheadEndByte
-		if ok && int(relexed.Symbol) < len(lang.ImmediateTokens) && lang.ImmediateTokens[relexed.Symbol] && dts != nil && dts.language == lang && tok.lexerSkippedPrefix() && tok.lexerSkippedPrefixStart < tok.StartByte {
+		if outcome == lexScanToken && int(relexed.Symbol) < len(lang.ImmediateTokens) && lang.ImmediateTokens[relexed.Symbol] && dts != nil && dts.language == lang && tok.lexerSkippedPrefix() && tok.lexerSkippedPrefixStart < tok.StartByte {
 			if len(p.included) != 0 {
 				return tok, state, false
 			}
@@ -6257,7 +6261,7 @@ func (p *Parser) relexTokenForStackLexState(
 			}
 			probe.pos, probe.row, probe.col = int(tok.lexerSkippedPrefixStart), row, col
 			probeStart = probe.pos
-			relexed, ok = probe.scan(uint32(ls), probe.pos, probe.row, probe.col)
+			relexed, outcome = probe.scan(uint32(ls), probe.pos, probe.row, probe.col)
 			relexed.lexerLookaheadEndByte = maxUint32(frontier, relexed.lexerLookaheadEndByte)
 		}
 		recordTokenInvariantReadSpan(lexicalReadSpan, probeStart, tokenInvariantExaminedEnd(source, relexed.lexerLookaheadEndByte))
@@ -6267,7 +6271,7 @@ func (p *Parser) relexTokenForStackLexState(
 		// Exact-span requirement: this is what keeps the shared-token loop in
 		// lockstep. A shorter or longer re-lex would leave this stack at a
 		// different byte offset than its siblings.
-		if ok && relexed.Symbol != 0 && relexed.Symbol != tok.Symbol &&
+		if outcome == lexScanToken && relexed.Symbol != tok.Symbol &&
 			relexed.StartByte == tok.StartByte && relexed.EndByte == tok.EndByte &&
 			(p.stateHasActionForSymbol(state, relexed.Symbol) || (p.language.RecoveryStackVersionOrderEnabled && dts == nil && relexed.Symbol == lang.KeywordCaptureToken && !p.isNamedSymbol(tok.Symbol) && int(tok.Symbol) < len(lang.SymbolNames) && lang.SymbolNames[tok.Symbol] == string(source[tok.StartByte:tok.EndByte]))) {
 			return relexed, state, true

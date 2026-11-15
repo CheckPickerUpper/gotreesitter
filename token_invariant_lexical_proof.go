@@ -421,7 +421,7 @@ func (d *dfaTokenSource) tokenInvariantProbeDFALimited(source []byte, origin uin
 	probe.failTokenStartPos, probe.failTokenStartRow, probe.failTokenStartCol, probe.failTokenStartRangeIdx = 0, 0, 0, 0
 	probe.failTokenEnd = includedLexerCursor{}
 	var tok Token
-	accepted := probe.scanInto(mode, int(origin), point.Row, point.Column, &tok)
+	accepted := probe.scanInto(mode, int(origin), point.Row, point.Column, &tok) != lexScanFailed
 	frontier := tokenInvariantExaminedEnd(probe.source, tok.lexerLookaheadEndByte)
 	// This private token carries the proof bound, not the public C frontier.
 	tok.lexerLookaheadEndByte = frontier

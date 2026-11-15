@@ -296,7 +296,7 @@ func TestTokenInvariantPrimitiveProbeStateContract(t *testing.T) {
 			reference.failTokenStartPos, reference.failTokenStartRow, reference.failTokenStartCol, reference.failTokenStartRangeIdx = 0, 0, 0, 0
 			reference.failTokenEnd = includedLexerCursor{}
 			var want Token
-			wantAccepted := reference.scanInto(0, 0, point.Row, point.Column, &want)
+			wantAccepted := reference.scanInto(0, 0, point.Row, point.Column, &want) != lexScanFailed
 			budget := tokenInvariantPrimitiveBudget{bytes: 128, scans: 8}
 			got, state, accepted, complete := d.tokenInvariantProbeDFA(source, 0, point, 0, &budget)
 			if !complete || accepted != wantAccepted || got.Text != want.Text || !tokenInvariantPrimitiveTokensEqual(got, want) {

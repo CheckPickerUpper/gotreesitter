@@ -276,11 +276,11 @@ func (l *Lexer) tokenText(start, end int) string {
 }
 
 // scanIncluded keeps the DFA state when the source cursor crosses a range gap.
-func (l *Lexer) scanIncluded(startState uint32, startPos int, startRow, startCol uint32) (Token, bool) {
+func (l *Lexer) scanIncluded(startState uint32, startPos int, startRow, startCol uint32) (Token, lexScanOutcome) {
 	workCountRecordRawMainLexerInvocation()
 	curState := int32(startState)
 	if curState < 0 || int(curState) >= len(l.states) {
-		return Token{}, false
+		return Token{}, lexScanFailed
 	}
 
 	scanCursor := includedLexerCursor{
@@ -301,7 +301,7 @@ func (l *Lexer) scanIncluded(startState uint32, startPos int, startRow, startCol
 	acceptRangeIdx := 0
 	acceptStart := includedLexerCursor{}
 	acceptSymbol := Symbol(0)
-	acceptSkip := false
+	acceptKind := lexScanFailed
 	acceptPriorityBest := int16(32767)
 
 	eofHops := 0
@@ -311,7 +311,7 @@ func (l *Lexer) scanIncluded(startState uint32, startPos int, startRow, startCol
 		}
 		st := &l.states[int(curState)]
 
-		if st.AcceptToken > 0 || st.Skip || (st.AcceptEOF && scanCursor.rangeIdx >= len(l.includedRanges)) {
+		if kind := st.acceptance(); kind != lexScanFailed {
 			isImmediate := st.AcceptToken > 0 && int(st.AcceptToken) < len(l.immediateTokens) && l.immediateTokens[st.AcceptToken]
 			skippedWhitespace := tokenStart.pos > startPos
 			zeroWidthVisible := st.AcceptToken > 0 && scanCursor.pos == tokenStart.pos && !l.allowsZeroWidthToken(st.AcceptToken)
@@ -326,7 +326,7 @@ func (l *Lexer) scanIncluded(startState uint32, startPos int, startRow, startCol
 					acceptRangeIdx = scanCursor.rangeIdx
 					acceptStart = tokenStart
 					acceptSymbol = st.AcceptToken
-					acceptSkip = st.Skip
+					acceptKind = kind
 					acceptPriorityBest = newPrio
 				}
 			}
@@ -386,7 +386,7 @@ func (l *Lexer) scanIncluded(startState uint32, startPos int, startRow, startCol
 			acceptProgressPos = -1
 			acceptPos = -1
 			acceptSymbol = 0
-			acceptSkip = false
+			acceptKind = lexScanFailed
 		}
 		curState = nextState
 	}
@@ -399,7 +399,7 @@ func (l *Lexer) scanIncluded(startState uint32, startPos int, startRow, startCol
 		acceptRangeIdx = scanCursor.rangeIdx
 		acceptStart = tokenStart
 		acceptSymbol = 0
-		acceptSkip = true
+		acceptKind = lexScanSkipped
 	}
 
 	lookaheadEndByte := l.lookaheadEndByteAt(scanCursor.pos, scanCursor.rangeIdx < len(l.includedRanges))
@@ -413,7 +413,7 @@ func (l *Lexer) scanIncluded(startState uint32, startPos int, startRow, startCol
 		l.failTokenStartCol = tokenStart.col
 		l.failTokenStartRangeIdx = tokenStart.rangeIdx
 		l.failTokenEnd = scanCursor
-		return Token{lexerLookaheadEndByte: lookaheadEndByte}, false
+		return Token{lexerLookaheadEndByte: lookaheadEndByte}, lexScanFailed
 	}
 
 	l.pos = acceptPos
@@ -421,16 +421,16 @@ func (l *Lexer) scanIncluded(startState uint32, startPos int, startRow, startCol
 	l.col = acceptCol
 	l.includedRangeIdx = acceptRangeIdx
 
-	if acceptSkip {
+	if acceptKind != lexScanToken {
 		return Token{
 			StartByte:               uint32(acceptStart.pos),
 			EndByte:                 uint32(acceptPos),
 			StartPoint:              Point{Row: acceptStart.row, Column: acceptStart.col},
 			EndPoint:                Point{Row: acceptRow, Column: acceptCol},
-			lexFlags:                lexFlagIf(skippedPrefix, tokenFlagSkippedPrefix),
+			lexFlags:                lexFlagIf(skippedPrefix, tokenFlagSkippedPrefix) | lexFlagIf(acceptKind == lexScanEnd, tokenFlagInternalDFALexed),
 			lexerSkippedPrefixStart: uint32(startPos),
 			lexerLookaheadEndByte:   lookaheadEndByte,
-		}, true
+		}, acceptKind
 	}
 
 	return Token{
@@ -443,5 +443,5 @@ func (l *Lexer) scanIncluded(startState uint32, startPos int, startRow, startCol
 		lexFlags:                lexFlagIf(skippedPrefix, tokenFlagSkippedPrefix) | tokenFlagInternalDFALexed,
 		lexerSkippedPrefixStart: uint32(startPos),
 		lexerLookaheadEndByte:   lookaheadEndByte,
-	}, true
+	}, lexScanToken
 }

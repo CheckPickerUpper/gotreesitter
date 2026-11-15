@@ -2642,8 +2642,8 @@ func deferContextualCloseAngleAction(lang *Language, source []byte, state StateI
 	if len(included) != 0 && lang.ExternalScanner == nil && len(lang.ExternalSymbols) == 0 {
 		probe.setIncludedRanges(included)
 	}
-	stateToken, ok := probe.scan(uint32(lexState), probe.pos, probe.row, probe.col)
-	if !ok || int(stateToken.Symbol) >= len(lang.SymbolNames) {
+	stateToken, outcome := probe.scan(uint32(lexState), probe.pos, probe.row, probe.col)
+	if outcome != lexScanToken || int(stateToken.Symbol) >= len(lang.SymbolNames) {
 		return false
 	}
 	stateTokenName := lang.SymbolNames[stateToken.Symbol]
@@ -5915,12 +5915,12 @@ func (d *dfaTokenSource) lexKeywordSource(source []byte) (Token, bool) {
 		}
 		st := &states[int(curState)]
 
-		if st.AcceptToken > 0 || st.Skip || (st.AcceptEOF && scanPos >= len(source)) {
+		if kind := st.acceptance(); kind != lexScanFailed {
 			newPrio := st.AcceptPriority
 			if acceptPos < 0 || newPrio < acceptPriorityBest || (newPrio == acceptPriorityBest && scanPos >= acceptPos) {
 				acceptPos = scanPos
 				acceptSymbol = st.AcceptToken
-				acceptSkip = st.Skip
+				acceptSkip = kind == lexScanSkipped
 				acceptPriorityBest = newPrio
 			}
 		}

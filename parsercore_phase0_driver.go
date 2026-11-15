@@ -5264,13 +5264,13 @@ func (s *diagnosticParserCoreGenericScheduler) relexTokenForState(state StateID,
 		immediateTokens: lang.ImmediateTokens,
 		zeroWidthTokens: lang.ZeroWidthTokens,
 	}
-	relexed, ok := probe.scan(uint32(lexState), probe.pos, probe.row, probe.col)
+	relexed, outcome := probe.scan(uint32(lexState), probe.pos, probe.row, probe.col)
 	examinedEnd := tokenInvariantExaminedEnd(source, relexed.lexerLookaheadEndByte)
 	recordTokenInvariantReadSpan(&s.tokenSource.tokenInvariantMaxReadSpan, int(tok.StartByte), examinedEnd)
 	if reads := s.tokenSource.lexer.reuseReads; reads != nil {
 		reads.Record(int(tok.StartByte), examinedEnd)
 	}
-	if !ok || relexed.Symbol == 0 {
+	if outcome != lexScanToken {
 		return tok, false
 	}
 	// A genuine per-header relex must start exactly where the shared

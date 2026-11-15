@@ -66,8 +66,9 @@ const (
 	// recovery token while parser state zero selected the error lex mode.
 	tokenFlagErrorModeLexed
 	// tokenFlagInternalDFALexed proves that Lexer.scan accepted this token
-	// from the internal DFA. External, generated, missing, and EOF tokens
-	// omit it.
+	// from the internal DFA, including an end token a lex state accepted
+	// before the input ended. External, generated, missing, and the end
+	// token at the end of input omit it.
 	tokenFlagInternalDFALexed
 	// tokenFlagKeyword records the keyword promotion path.
 	tokenFlagKeyword
@@ -244,22 +245,24 @@ func (l *Lexer) nextWithFrontier(startState uint32, emitErrorRuns bool, lookahea
 		tokenStartCol := l.col
 
 		var tok Token
-		ok := l.scanInto(startState, tokenStartPos, tokenStartRow, tokenStartCol, &tok)
+		outcome := l.scanInto(startState, tokenStartPos, tokenStartRow, tokenStartCol, &tok)
 		lookaheadEndByte = maxUint32(lookaheadEndByte, tok.lexerLookaheadEndByte)
-		if ok {
-			if tok.Symbol == 0 {
-				// Skip token (whitespace). Verify the lexer actually
-				// advanced past the skipped content to prevent an
-				// infinite loop on zero-width skip matches.
-				if l.pos <= tokenStartPos {
-					prefixState &^= prefixSkipped
-					prefixState |= prefixFailed
-					l.skipOneRune()
-				} else {
-					prefixState |= prefixSkipped
-				}
-				continue
+		switch outcome {
+		case lexScanSkipped:
+			// Skip token (whitespace). Verify the lexer actually
+			// advanced past the skipped content to prevent an
+			// infinite loop on zero-width skip matches.
+			if l.pos <= tokenStartPos {
+				prefixState &^= prefixSkipped
+				prefixState |= prefixFailed
+				l.skipOneRune()
+			} else {
+				prefixState |= prefixSkipped
 			}
+			continue
+		case lexScanToken, lexScanEnd:
+			// The end token ends the input where it was accepted, as C's
+			// ts_parser__lex returns ts_builtin_sym_end from the lex state.
 			if prefixState&prefixSkipped != 0 {
 				tok.setLexFlag(tokenFlagSkippedPrefix, true)
 				tok.lexerSkippedPrefixStart = uint32(callStartPos)
@@ -269,6 +272,8 @@ func (l *Lexer) nextWithFrontier(startState uint32, emitErrorRuns bool, lookahea
 				tok.missingStackRef = ^uint32(0)
 			}
 			return tok
+		case lexScanFailed:
+			// Handled below: error-mode retry, an error run, or one skipped rune.
 		}
 		prefixState &^= prefixSkipped
 
@@ -302,19 +307,20 @@ func (l *Lexer) skipLeadingBOM() {
 	l.col = uint32(len(utf8BOM))
 }
 
-// canLexAt reports whether the DFA can lex a token (or whitespace skip)
-// starting at the given position, without moving the lexer.
+// canLexAt reports whether the DFA accepts anything (a token, a whitespace
+// skip or the end token) starting at the given position, without moving the
+// lexer.
 func (l *Lexer) canLexAt(lexState uint32, pos int, row, col uint32, frontier *uint32) bool {
 	savedPos, savedRow, savedCol := l.pos, l.row, l.col
 	savedRangeIdx := l.includedRangeIdx
 	var tok Token
-	ok := l.scanInto(lexState, pos, row, col, &tok)
+	outcome := l.scanInto(lexState, pos, row, col, &tok)
 	if frontier != nil {
 		*frontier = maxUint32(*frontier, tok.lexerLookaheadEndByte)
 	}
 	l.pos, l.row, l.col = savedPos, savedRow, savedCol
 	l.includedRangeIdx = savedRangeIdx
-	return ok
+	return outcome != lexScanFailed
 }
 
 // errorRunToken consumes the unlexable run beginning at the last failed
@@ -379,22 +385,55 @@ func (l *Lexer) advanceFailedErrorAttempt() {
 	l.skipOneRune()
 }
 
-// scan runs the DFA from the given start state and position. It returns
-// a token and true if an accepting state was reached, or false if not.
-// On a skip (whitespace) match, it returns a zero-Symbol token and true.
-func (l *Lexer) scan(startState uint32, startPos int, startRow, startCol uint32) (Token, bool) {
+// lexScanOutcome is what one run of the lexer DFA accepted.
+type lexScanOutcome uint8
+
+const (
+	// lexScanFailed means no state on the scanned path accepted anything.
+	lexScanFailed lexScanOutcome = iota
+	// lexScanSkipped means the scan accepted only separators; the token
+	// spans them and carries no symbol.
+	lexScanSkipped
+	// lexScanToken means the scan accepted a grammar token.
+	lexScanToken
+	// lexScanEnd means the scan accepted the end token, which tree-sitter's
+	// ACCEPT_TOKEN(ts_builtin_sym_end) accepts at any position, not only at
+	// the end of input. The token is zero-width at the accepting position.
+	lexScanEnd
+)
+
+// acceptance returns what reaching the state accepts. A separator's skip
+// wins over the token it matches, and the end token is accepted only by a
+// state that accepts nothing else.
+func (st *LexState) acceptance() lexScanOutcome {
+	switch {
+	case st.Skip:
+		return lexScanSkipped
+	case st.AcceptToken > 0:
+		return lexScanToken
+	case st.AcceptEOF:
+		return lexScanEnd
+	default:
+		return lexScanFailed
+	}
+}
+
+// scan runs the DFA from the given start state and position and returns the
+// token with what the scan accepted. A skipped run and the end token both
+// carry symbol 0; the outcome tells them apart.
+func (l *Lexer) scan(startState uint32, startPos int, startRow, startCol uint32) (Token, lexScanOutcome) {
 	var tok Token
-	ok := l.scanInto(startState, startPos, startRow, startCol, &tok)
-	return tok, ok
+	outcome := l.scanInto(startState, startPos, startRow, startCol, &tok)
+	return tok, outcome
 }
 
 // scanInto replaces the complete output token, including when the scan fails.
-func (l *Lexer) scanInto(startState uint32, startPos int, startRow, startCol uint32, tok *Token) bool {
-	var ok bool
+func (l *Lexer) scanInto(startState uint32, startPos int, startRow, startCol uint32, tok *Token) lexScanOutcome {
+	var outcome lexScanOutcome
 	if len(l.includedRanges) != 0 {
-		*tok, ok = l.scanIncluded(startState, startPos, startRow, startCol)
+		*tok, outcome = l.scanIncluded(startState, startPos, startRow, startCol)
 	} else {
-		ok = l.scanContiguousInto(startState, startPos, startRow, startCol, tok)
+		outcome = l.scanContiguousInto(startState, startPos, startRow, startCol, tok)
 	}
 	if l.tokenInvariantReadSpanMax != nil {
 		recordTokenInvariantReadSpan(l.tokenInvariantReadSpanMax, startPos, tokenInvariantExaminedEnd(l.source, tok.lexerLookaheadEndByte))
@@ -402,7 +441,7 @@ func (l *Lexer) scanInto(startState uint32, startPos int, startRow, startCol uin
 	if l.reuseReads != nil {
 		l.reuseReads.Record(startPos, tokenInvariantExaminedEnd(l.source, tok.lexerLookaheadEndByte))
 	}
-	return ok
+	return outcome
 }
 
 // C frontiers identify the first byte of valid lookahead. Dependency checks
@@ -425,19 +464,22 @@ func recordTokenInvariantReadSpan(maximum *uint32, start int, frontier uint32) {
 	}
 }
 
-func (l *Lexer) scanContiguous(startState uint32, startPos int, startRow, startCol uint32) (Token, bool) {
+// scanContiguous is scanContiguousInto returning the token by value.
+func (l *Lexer) scanContiguous(startState uint32, startPos int, startRow, startCol uint32) (Token, lexScanOutcome) {
 	var tok Token
-	ok := l.scanContiguousInto(startState, startPos, startRow, startCol, &tok)
-	return tok, ok
+	outcome := l.scanContiguousInto(startState, startPos, startRow, startCol, &tok)
+	return tok, outcome
 }
 
-func (l *Lexer) scanContiguousInto(startState uint32, startPos int, startRow, startCol uint32, tok *Token) bool {
+// scanContiguousInto runs the DFA over contiguous source and reports what it
+// accepted at the last accepting state it reached.
+func (l *Lexer) scanContiguousInto(startState uint32, startPos int, startRow, startCol uint32, tok *Token) lexScanOutcome {
 	// work-count-assembly: raw main-lexer invocation seam
 	workCountRecordRawMainLexerInvocation()
 	curState := int32(startState)
 	if curState < 0 || int(curState) >= len(l.states) {
 		*tok = Token{}
-		return false
+		return lexScanFailed
 	}
 
 	scanPos := startPos
@@ -456,7 +498,7 @@ func (l *Lexer) scanContiguousInto(startState uint32, startPos int, startRow, st
 	acceptStartRow := uint32(0)
 	acceptStartCol := uint32(0)
 	acceptSymbol := Symbol(0)
-	acceptSkip := false
+	acceptKind := lexScanFailed
 	acceptPriorityBest := int16(32767) // max int16; any real priority beats this
 
 	eofHops := 0
@@ -467,7 +509,7 @@ func (l *Lexer) scanContiguousInto(startState uint32, startPos int, startRow, st
 		}
 		st := &l.states[int(curState)]
 
-		if st.AcceptToken > 0 || st.Skip || (st.AcceptEOF && scanPos >= len(l.source)) {
+		if kind := st.acceptance(); kind != lexScanFailed {
 			// Reject immediate tokens that matched after whitespace was
 			// consumed. Immediate tokens must match at the original position.
 			isImmediate := st.AcceptToken > 0 && int(st.AcceptToken) < len(l.immediateTokens) && l.immediateTokens[st.AcceptToken]
@@ -483,7 +525,7 @@ func (l *Lexer) scanContiguousInto(startState uint32, startPos int, startRow, st
 					acceptStartRow = tokenStartRow
 					acceptStartCol = tokenStartCol
 					acceptSymbol = st.AcceptToken
-					acceptSkip = st.Skip
+					acceptKind = kind
 					acceptPriorityBest = newPrio
 				}
 			}
@@ -563,7 +605,7 @@ func (l *Lexer) scanContiguousInto(startState uint32, startPos int, startRow, st
 			tokenStartCol = scanCol
 			acceptPos = -1
 			acceptSymbol = 0
-			acceptSkip = false
+			acceptKind = lexScanFailed
 		}
 
 		curState = nextState
@@ -579,7 +621,7 @@ func (l *Lexer) scanContiguousInto(startState uint32, startPos int, startRow, st
 		acceptStartRow = tokenStartRow
 		acceptStartCol = tokenStartCol
 		acceptSymbol = 0
-		acceptSkip = true
+		acceptKind = lexScanSkipped
 	}
 
 	lookaheadEndByte := l.lookaheadEndByteAt(scanPos, true)
@@ -594,7 +636,7 @@ func (l *Lexer) scanContiguousInto(startState uint32, startPos int, startRow, st
 		l.failTokenStartRangeIdx = 0
 		l.failTokenEnd = includedLexerCursor{pos: scanPos, row: scanRow, col: scanCol}
 		*tok = Token{lexerLookaheadEndByte: lookaheadEndByte}
-		return false
+		return lexScanFailed
 	}
 
 	// Rewind (or advance) to the accept position.
@@ -602,18 +644,19 @@ func (l *Lexer) scanContiguousInto(startState uint32, startPos int, startRow, st
 	l.row = acceptRow
 	l.col = acceptCol
 
-	if acceptSkip {
-		// Return a zero-Symbol token to signal "skip".
+	if acceptKind != lexScanToken {
+		// A skipped run and the end token carry no symbol; the outcome
+		// tells the caller which one this is.
 		*tok = Token{
 			StartByte:               uint32(acceptStartPos),
 			EndByte:                 uint32(acceptPos),
 			StartPoint:              Point{Row: acceptStartRow, Column: acceptStartCol},
 			EndPoint:                Point{Row: acceptRow, Column: acceptCol},
-			lexFlags:                lexFlagIf(skippedPrefix, tokenFlagSkippedPrefix),
+			lexFlags:                lexFlagIf(skippedPrefix, tokenFlagSkippedPrefix) | lexFlagIf(acceptKind == lexScanEnd, tokenFlagInternalDFALexed),
 			lexerSkippedPrefixStart: uint32(startPos),
 			lexerLookaheadEndByte:   lookaheadEndByte,
 		}
-		return true
+		return acceptKind
 	}
 
 	*tok = Token{
@@ -627,7 +670,7 @@ func (l *Lexer) scanContiguousInto(startState uint32, startPos int, startRow, st
 		lexerSkippedPrefixStart: uint32(startPos),
 		lexerLookaheadEndByte:   lookaheadEndByte,
 	}
-	return true
+	return lexScanToken
 }
 
 func tokenLookaheadEndByte(token Token) uint32 {

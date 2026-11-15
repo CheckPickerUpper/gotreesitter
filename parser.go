@@ -5430,7 +5430,14 @@ func (p *Parser) parseInternal(source []byte, ts TokenSource, reuse *reuseCursor
 		lastTokenSymbol = t.Symbol
 		lastTokenWasEOF = t.Symbol == 0 && t.StartByte == t.EndByte && !t.NoLookahead
 		if lastTokenWasEOF && t.EndByte < expectedEOFByte {
-			tokenSourceEOFEarly = true
+			if t.lexerInternalDFALexed() {
+				// The lex state accepted the end token here, so the input
+				// ends here and the root ends at this token, as in C.
+				expectedEOFByte = t.EndByte
+				parseRuntime.ExpectedEOFByte = t.EndByte
+			} else {
+				tokenSourceEOFEarly = true
+			}
 		}
 	}
 	computeStopDiagnosticRecoverAction := func() bool {

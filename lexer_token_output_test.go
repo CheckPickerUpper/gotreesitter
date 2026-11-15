@@ -85,7 +85,7 @@ func TestLexerScanIntoReplacesPoisonedOutput(t *testing.T) {
 				var span uint32
 				lex.tokenInvariantReadSpanMax = &span
 				output := poisonedLexerOutputToken()
-				accepted := lex.scanInto(test.state, 0, 0, 0, &output)
+				accepted := lex.scanInto(test.state, 0, 0, 0, &output) != lexScanFailed
 				if accepted != test.accepted || output != test.want {
 					t.Fatalf("accepted=%t token=%+v, want accepted=%t token=%+v", accepted, output, test.accepted, test.want)
 				}
@@ -121,27 +121,27 @@ func TestLexerScanIntoReusesOutputAcrossRangeGap(t *testing.T) {
 		StartPoint: Point{Row: 4, Column: 2}, EndPoint: Point{Row: 7, Column: 10},
 		lexFlags: tokenFlagInternalDFALexed, lexerLookaheadEndByte: 5,
 	}
-	if !lex.scanInto(0, 0, 4, 2, &output) || output != want {
+	if lex.scanInto(0, 0, 4, 2, &output) != lexScanToken || output != want {
 		t.Fatalf("cross-range token=%+v, want %+v", output, want)
 	}
 	previous := output
 	if lex.pos != 4 || lex.row != 7 || lex.col != 10 || lex.includedRangeIdx != 1 {
 		t.Fatalf("cross-range cursor=(%d,%d,%d,%d)", lex.pos, lex.row, lex.col, lex.includedRangeIdx)
 	}
-	if lex.scanInto(0, 4, 7, 10, &output) || output != (Token{lexerLookaheadEndByte: 5}) {
+	if lex.scanInto(0, 4, 7, 10, &output) != lexScanFailed || output != (Token{lexerLookaheadEndByte: 5}) {
 		t.Fatalf("failed scan retained token fields: %+v", output)
 	}
 	if lex.failTokenStartPos != 4 || lex.failTokenStartRow != 7 || lex.failTokenStartCol != 10 || lex.failTokenStartRangeIdx != 1 {
 		t.Fatalf("failure cursor=(%d,%d,%d,%d)", lex.failTokenStartPos, lex.failTokenStartRow, lex.failTokenStartCol, lex.failTokenStartRangeIdx)
 	}
-	if lex.scanInto(^uint32(0), 4, 7, 10, &output) || output != (Token{}) {
+	if lex.scanInto(^uint32(0), 4, 7, 10, &output) != lexScanFailed || output != (Token{}) {
 		t.Fatalf("invalid-state scan retained token fields: %+v", output)
 	}
 	if lex.pos != 4 || lex.row != 7 || lex.col != 10 || lex.includedRangeIdx != 1 || span != 5 {
 		t.Fatalf("failed scans changed cursor or lost coverage: cursor=(%d,%d,%d,%d), span=%d", lex.pos, lex.row, lex.col, lex.includedRangeIdx, span)
 	}
 	lex.pos, lex.row, lex.col, lex.includedRangeIdx = 0, 4, 2, 0
-	if !lex.scanInto(0, 0, 4, 2, &output) || output != want || previous != want {
+	if lex.scanInto(0, 0, 4, 2, &output) != lexScanToken || output != want || previous != want {
 		t.Fatalf("reused output=%+v previous=%+v, want %+v", output, previous, want)
 	}
 }

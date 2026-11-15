@@ -2,21 +2,39 @@ package gotreesitter
 
 import "testing"
 
-func TestLexerAcceptEOFOnlyAtEnd(t *testing.T) {
+// TestLexerAcceptsEndAtAnyPosition checks that a state accepting the end
+// token accepts it wherever the scan reaches it, as tree-sitter's
+// ACCEPT_TOKEN(ts_builtin_sym_end) does, and that the outcome tells the end
+// token apart from a skipped run.
+func TestLexerAcceptsEndAtAnyPosition(t *testing.T) {
 	states := []LexState{{AcceptEOF: true, Default: -1, EOF: -1}}
 	lex := NewLexer(states, []byte("x"))
-	if token, ok := lex.scanContiguous(0, 0, 0, 0); ok {
-		t.Fatalf("accepted end before input ended: %+v", token)
-	}
-	if token, ok := lex.scanContiguous(0, 1, 0, 1); !ok || token.Symbol != 0 || token.EndByte != 1 {
-		t.Fatalf("missing end acceptance: token=%+v ok=%v", token, ok)
+	for _, position := range []int{0, 1} {
+		if token, outcome := lex.scanContiguous(0, position, 0, uint32(position)); outcome != lexScanEnd || token.Symbol != 0 || token.StartByte != uint32(position) || token.EndByte != uint32(position) {
+			t.Fatalf("position %d: token=%+v outcome=%d, want the end token there", position, token, outcome)
+		}
 	}
 	lex.setIncludedRanges([]Range{{StartByte: 0, EndByte: 1, EndPoint: Point{Column: 1}}})
-	if token, ok := lex.scanIncluded(0, 0, 0, 0); ok {
-		t.Fatalf("accepted included end before input ended: %+v", token)
+	for _, position := range []int{0, 1} {
+		if token, outcome := lex.scanIncluded(0, position, 0, uint32(position)); outcome != lexScanEnd || token.Symbol != 0 || token.StartByte != uint32(position) || token.EndByte != uint32(position) {
+			t.Fatalf("included position %d: token=%+v outcome=%d, want the end token there", position, token, outcome)
+		}
 	}
-	if token, ok := lex.scanIncluded(0, 1, 0, 1); !ok || token.Symbol != 0 || token.EndByte != 1 {
-		t.Fatalf("missing included end acceptance: token=%+v ok=%v", token, ok)
+	skip := []LexState{{Default: -1, EOF: -1, Transitions: []LexTransition{{Lo: ' ', Hi: ' ', NextState: 1}}}, {Skip: true, Default: -1, EOF: -1}}
+	if _, outcome := NewLexer(skip, []byte(" x")).scanContiguous(0, 0, 0, 0); outcome != lexScanSkipped {
+		t.Fatalf("separator outcome=%d, want a skip", outcome)
+	}
+}
+
+// TestLexerNextReturnsEndBeforeRemainingInput checks that Next stops at an
+// end token the lex state accepts before the input ends, instead of reading
+// the remaining bytes as an error.
+func TestLexerNextReturnsEndBeforeRemainingInput(t *testing.T) {
+	states := []LexState{{AcceptEOF: true, Default: -1, EOF: -1}}
+	lex := NewLexer(states, []byte("\n"))
+	token := lex.NextWithErrorRuns(0)
+	if token.Symbol != 0 || token.StartByte != 0 || token.EndByte != 0 || lex.pos != 0 {
+		t.Fatalf("token=%+v at %d, want the end token at byte 0", token, lex.pos)
 	}
 }
 
@@ -44,15 +62,15 @@ func TestLexerEOFAcceptReplacesEqualWidthToken(t *testing.T) {
 				}
 				lex := NewLexer(states, source)
 				var token Token
-				var ok bool
+				var outcome lexScanOutcome
 				if included {
 					lex.setIncludedRanges([]Range{{StartByte: 0, EndByte: 1, EndPoint: Point{Column: 1}}})
-					token, ok = lex.scanIncluded(0, 0, 0, 0)
+					token, outcome = lex.scanIncluded(0, 0, 0, 0)
 				} else {
-					token, ok = lex.scanContiguous(0, 0, 0, 0)
+					token, outcome = lex.scanContiguous(0, 0, 0, 0)
 				}
-				if !ok || token.Symbol != tc.want || token.StartByte != 0 || token.EndByte != 1 {
-					t.Fatalf("included=%v: token=%+v ok=%v, want symbol %d", included, token, ok, tc.want)
+				if outcome == lexScanFailed || token.Symbol != tc.want || token.StartByte != 0 || token.EndByte != 1 {
+					t.Fatalf("included=%v: token=%+v outcome=%d, want symbol %d", included, token, outcome, tc.want)
 				}
 			}
 		})
