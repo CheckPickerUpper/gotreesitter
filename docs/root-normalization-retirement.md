@@ -27,8 +27,6 @@ The grammar lock SHA-256 is
 `9ddb6324afd014f6ecdd1cae3dd1ba238f1e62ce03d126e6d8b267ce34d72ecb`.
 The Julia grammar is `https://github.com/tree-sitter/tree-sitter-julia` at
 `e0f9dcd180fdcfcfa8d79a3531e11d99e79321d3`.
-The embedded Julia blob SHA-256 is
-`c716f2b9ee3852cc25a26107b7a1c78b9f76585fa77774d8f8a1b47ad590134f`.
 The C artifact SHA-256 is
 `ac44385e88e2f5dc8c78dafef4eaf28f89bd2f922cc6a68e282b1b7b21f7eb8c`.
 The A0 and tracked manifest hashes are
@@ -224,11 +222,6 @@ The grammar lock has SHA-256
 It pins C to commit `ae19b676b13bdcc13b7665397e6d9b14975473dd`.
 It pins C++ to commit `8b5b49eb196bec7040441bee33b2c9a4838d6967`.
 
-The embedded Go C grammar blob has SHA-256
-`9aee42825fd1446ce5b754951db26edadcdba5d2f26b61578a30e87ed2dbbd3c`.
-The embedded Go C++ grammar blob has SHA-256
-`d351f902c8f2ca85257a9296d3c9991862d57701ac6e9006e386ae173fd35178`.
-
 The locked C oracle uses contract `tree-sitter-c-v1`.
 It uses binding `github.com/tree-sitter/go-tree-sitter` version `v0.25.0`.
 Its binding commit is `adc13ffd8b2c0b01b878fda9f7c422ce0df5fad3`.
@@ -414,8 +407,7 @@ is `scheduler_action_semantics`. Canopy confirms the dispatcher call at
 forest, incremental, and locked-C output for every registered witness.
 
 The grammar lock pins AWK to Beaglefoot commit
-`34bbdc7cce8e803096f47b625979e34c1be38127`. The generated AWK blob SHA-256 is
-`925312ca0bc6e279602402c64700b8198c55ed949ac967ce92bae40f7f21cedf`.
+`34bbdc7cce8e803096f47b625979e34c1be38127`.
 The A0 (initial dispatcher census) manifest has 14 languages and 42 files.
 It excludes AWK. Its parser revision is
 `3c55dca287c9dd6ed987c764b9aafd90b22281a2`. Its grammar-lock digest is
@@ -574,8 +566,6 @@ The grammar lock SHA-256 is
 `9ddb6324afd014f6ecdd1cae3dd1ba238f1e62ce03d126e6d8b267ce34d72ecb`.
 The SQL grammar is `https://github.com/m-novikov/tree-sitter-sql` at commit
 `587f30d184b058450be2a2330878210c5f33b3f9`.
-The embedded SQL blob SHA-256 is
-`e21421cbab52b54cf5ba15c8f78a2bb4729bf4e8c0da14368069e897de451268`.
 The scanner identity is
 `7e493677411a501e6d8592c6b9cc158e21a1bfed44c72ca914e2d81e4e34861d`.
 The scanner binds the embedded grammar identity.
@@ -2818,8 +2808,6 @@ The locked grammar is `tree-sitter-cooklang` at commit
 `4ebe237c1cf64cf3826fc249e9ec0988fe07e58e`.
 The grammar lock SHA-256 is
 `9ddb6324afd014f6ecdd1cae3dd1ba238f1e62ce03d126e6d8b267ce34d72ecb`.
-The embedded Go grammar blob SHA-256 is
-`2fd57f20461bcc0830fd14420cd06ad08750dd3cbbc440670e63056d59b3692a`.
 The Cooklang language has an external scanner.
 
 The A0 (authenticated dispatcher census) manifest has 14 languages, 42 files,
@@ -3525,10 +3513,9 @@ checks every identity field that the loader reports.
 | Compiler version | `cc (Debian 12.2.0-14+deb12u1) 12.2.0` |
 | C grammar artifact SHA-256 | `5bafc32251964c20e5a61f74ec32d001fcc5776e7ed3b7ed8621fd7fd96d6a2a` |
 | Grammar lock SHA-256 | `9ddb6324afd014f6ecdd1cae3dd1ba238f1e62ce03d126e6d8b267ce34d72ecb` |
-| Embedded Solidity blob SHA-256 | `79a2deeff86d17d79472ce603713312135fe9dbb08760013412b6d428f351c74` |
 
-The test hashes both the lock file and the embedded Solidity blob file. It
-also hashes the embedded blob returned by the grammar package.
+The test hashes the lock file, and logs the SHA-256 of the embedded blob
+returned by the grammar package.
 
 ### Route contract
 
@@ -3683,8 +3670,6 @@ The pinned identity is:
 
 - grammar lock SHA-256:
   `9ddb6324afd014f6ecdd1cae3dd1ba238f1e62ce03d126e6d8b267ce34d72ecb`;
-- embedded and file blob SHA-256:
-  `049223fe9382f88405b2758c21811af85cb0a7d771de71970817198ff703c169`;
 - grammar repository and commit:
   `https://github.com/bostick/tree-sitter-wolfram` at
   `63ebdac6f040d9082d3d8fa88be96ce24549adc5`;
@@ -3798,8 +3783,6 @@ The pinned identity is:
 
 - grammar lock SHA-256:
   `9ddb6324afd014f6ecdd1cae3dd1ba238f1e62ce03d126e6d8b267ce34d72ecb`;
-- embedded and file blob SHA-256:
-  `78f20ce45f9a4df12c458aadfbe9a98c80572bb13e0e2d01ffc43060e8d04701`;
 - grammar repository and commit:
   `https://github.com/vrischmann/tree-sitter-templ` at
   `1c6db04effbcd7773c826bded9783cbc3061bd55`;
@@ -3938,7 +3921,6 @@ The witness source hashes are:
 The grammar lock hash is `9ddb6324afd014f6ecdd1cae3dd1ba238f1e62ce03d126e6d8b267ce34d72ecb`.
 The grammar is `https://github.com/szebniok/tree-sitter-wgsl` at
 `40259f3c77ea856841a4e0c4c807705f3e4a2b65`.
-The embedded WGSL blob hash is `bed4620b51ac8e6dde6ea1ed0d14465f8b17ab11c2487a190650ef15abe392eb`.
 The C artifact hash is `67e5190b02afea88cfd9ced8866be93a6ab083922bdb73328c8d481d54907f0c`.
 The C oracle uses tree-sitter C contract `tree-sitter-c-v1`, binding version `v0.25.0`,
 binding commit `adc13ffd8b2c0b01b878fda9f7c422ce0df5fad3`, and runtime `0.25.1` at

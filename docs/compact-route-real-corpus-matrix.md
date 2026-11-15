@@ -6064,9 +6064,8 @@ The focused test hashes the marked local source region. A semantics change
 fails the test until the scanner identity is updated with review.
 
 The checked-in SQL blob is `grammars/grammar_blobs/sql.bin`. It has 581,443
-bytes and SHA-256
-`e21421cbab52b54cf5ba15c8f78a2bb4729bf4e8c0da14368069e897de451268`.
-The trusted exact-byte loader records this hash before it adapts the SQL
+bytes.
+The trusted exact-byte loader records its SHA-256 before it adapts the SQL
 scanner. The public `Language` API has no grammar identity setter. Callers
 cannot relabel a loaded language after adaptation.
 
@@ -6162,8 +6161,8 @@ generated blob identity
 The old parse recorded 13 checkpoint records, 4 checkpoint leaves, and 4
 snapshots. The edited parse
 reused 1 subtree and 16 bytes. Fresh and incremental trees matched.
-The reference SQL scanner supplied stale grammar identity
-`e21421cbab52b54cf5ba15c8f78a2bb4729bf4e8c0da14368069e897de451268`.
+The reference SQL scanner supplied the checked-in SQL blob's grammar
+identity, which is stale for the generated blob.
 The stale checkpoint reused zero subtrees and zero bytes.
 
 The full regression artifact recorded the existing dollar-quote divergence:
@@ -7131,7 +7130,7 @@ The generated and locked identities are:
 | --- | --- | --- | --- | --- |
 | Generated production | `4ffb2a6d09e2000126f10101db9028d28e0752ac3e4f83e401f045c3b028ca7c` | `[286,287,288]` | `pre=180`, `parse=449` | `[9,12)` |
 | Generated compact, target symbols | `4ffb2a6d09e2000126f10101db9028d28e0752ac3e4f83e401f045c3b028ca7c` | `[286,287,288]` | `pre=180`, `parse=449` | `[9,12)` |
-| Locked production | `e21421cbab52b54cf5ba15c8f78a2bb4729bf4e8c0da14368069e897de451268` | `[285,286,287]` | `pre=16613`, `parse=16652` | `[9,12)` |
+| Locked production | checked-in `sql.bin` | `[285,286,287]` | `pre=16613`, `parse=16652` | `[9,12)` |
 
 The generated scanner identity is
 `7e493677411a501e6d8592c6b9cc158e21a1bfed44c72ca914e2d81e4e34861d`.
@@ -7364,8 +7363,7 @@ The generated language uses blob identity
 `4ffb2a6d09e2000126f10101db9028d28e0752ac3e4f83e401f045c3b028ca7c`.
 Its scanner identity is
 `7e493677411a501e6d8592c6b9cc158e21a1bfed44c72ca914e2d81e4e34861d`.
-The checked-in SQL blob identity is
-`e21421cbab52b54cf5ba15c8f78a2bb4729bf4e8c0da14368069e897de451268`.
+The checked-in SQL blob's identity differs from it.
 
 The witness is the 16-byte source `SELECT $$hey$$;\n`.
 Its source SHA-256 is
@@ -7477,8 +7475,7 @@ The generated blob identity is
 `4ffb2a6d09e2000126f10101db9028d28e0752ac3e4f83e401f045c3b028ca7c`.
 The scanner identity is
 `7e493677411a501e6d8592c6b9cc158e21a1bfed44c72ca914e2d81e4e34861d`.
-The checked-in SQL blob identity is
-`e21421cbab52b54cf5ba15c8f78a2bb4729bf4e8c0da14368069e897de451268`.
+The checked-in SQL blob's identity differs from it.
 
 The witness is the 22-byte source `SELECT $tag$hey$tag$;\n`.
 Its source SHA-256 is
@@ -7578,8 +7575,7 @@ The generated blob identity is
 `4ffb2a6d09e2000126f10101db9028d28e0752ac3e4f83e401f045c3b028ca7c`.
 The scanner identity is
 `7e493677411a501e6d8592c6b9cc158e21a1bfed44c72ca914e2d81e4e34861d`.
-The checked-in SQL blob identity is
-`e21421cbab52b54cf5ba15c8f78a2bb4729bf4e8c0da14368069e897de451268`.
+The checked-in SQL blob's identity differs from it.
 
 The witness is the 19-byte source `CREATE DOMAIN test;`.
 Its source SHA-256 is
@@ -7670,8 +7666,7 @@ The generated blob identity is
 `4ffb2a6d09e2000126f10101db9028d28e0752ac3e4f83e401f045c3b028ca7c`.
 The scanner identity is
 `7e493677411a501e6d8592c6b9cc158e21a1bfed44c72ca914e2d81e4e34861d`.
-The checked-in SQL blob identity is
-`e21421cbab52b54cf5ba15c8f78a2bb4729bf4e8c0da14368069e897de451268`.
+The checked-in SQL blob's identity differs from it.
 
 The witness is the 27-byte source `CREATE DOMAIN test AS text;`.
 Its source SHA-256 is
