@@ -1,13 +1,12 @@
 package grammarruntime
 
 import (
-	"crypto/sha256"
 	"testing"
 
 	gotreesitter "github.com/odvcencio/gotreesitter"
 )
 
-func TestGoOwnedEOFRecoveryProfileRequiresExactBlob(t *testing.T) {
+func TestGoOwnedEOFRecoveryProfileAttaches(t *testing.T) {
 	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
 	lang := GoLanguage()
 	if !lang.CompactOwnedEOFRecoveryCertified || !lang.CompactConvergedReductionSplitDropsCertified {
@@ -24,13 +23,9 @@ func TestGoOwnedEOFRecoveryProfileRequiresExactBlob(t *testing.T) {
 	if custom.CompactOwnedEOFRecoveryCertified {
 		t.Fatal("same-name custom Go received the owned EOF bundle")
 	}
-	stale := &gotreesitter.Language{Name: "go"}
-	if attachBuiltinLanguageRuntimeProfile("go", sha256.Sum256([]byte("stale")), stale) || stale.CompactOwnedEOFRecoveryCertified {
-		t.Fatal("stale Go received the owned EOF bundle")
-	}
-	exact := &gotreesitter.Language{Name: "go"}
-	if !attachBuiltinLanguageRuntimeProfile("go", sha256.Sum256(BlobByName("go")), exact) || !exact.CompactOwnedEOFRecoveryCertified {
-		t.Fatal("exact Go blob did not receive the owned EOF bundle")
+	attached := &gotreesitter.Language{Name: "go"}
+	if !attachBuiltinLanguageRuntimeProfile("go", attached) || !attached.CompactOwnedEOFRecoveryCertified {
+		t.Fatal("the Go profile did not attach the owned EOF bundle")
 	}
 	for name, profile := range builtinLanguageRuntimeProfiles {
 		if name != "go" && profile.compactOwnedEOFRecovery {

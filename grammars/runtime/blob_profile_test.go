@@ -5,16 +5,7 @@ import (
 	"testing"
 )
 
-func TestJavaScriptForestAllowanceRequiresExactBuiltinBlobIdentity(t *testing.T) {
-	wrongSHA := [32]byte{1}
-	wrongIdentity := &gotreesitter.Language{Name: "javascript"}
-	if attachBuiltinLanguageRuntimeProfile("javascript", wrongSHA, wrongIdentity) {
-		t.Fatal("wrong blob identity unexpectedly attached a runtime profile")
-	}
-	if got := wrongIdentity.AutomaticForestMemoryAllowanceBytes; got != 0 {
-		t.Fatalf("wrong-identity allowance = %d, want zero", got)
-	}
-
+func TestJavaScriptForestAllowanceRequiresBuiltinProfile(t *testing.T) {
 	blob := BlobByName("javascript")
 	custom, err := gotreesitter.LoadLanguage(blob)
 	if err != nil {

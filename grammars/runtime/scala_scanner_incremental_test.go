@@ -189,13 +189,6 @@ func TestScalaScannerExactProfile(t *testing.T) {
 	if _, ok := raw.(gotreesitter.IncrementalReuseExternalScanner); ok {
 		t.Fatal("an unverified raw Scala scanner advertised incremental reuse")
 	}
-	rawLanguage.ExternalScanner = raw
-	if attachBuiltinLanguageRuntimeProfile("scala", sha256.Sum256([]byte("wrong Scala blob")), rawLanguage) {
-		t.Fatal("a mismatched Scala blob received a runtime profile")
-	}
-	if _, ok := rawLanguage.ExternalScanner.(gotreesitter.IncrementalReuseExternalScanner); ok {
-		t.Fatal("a mismatched Scala blob received scanner reuse certification")
-	}
 }
 
 func TestScalaScannerAdaptationStaysConservative(t *testing.T) {

@@ -1,7 +1,6 @@
 package grammarruntime
 
 import (
-	"crypto/sha256"
 	"slices"
 	"testing"
 
@@ -69,15 +68,9 @@ func TestHTMLProfileCertifiesCompleteCompactRecovery(t *testing.T) {
 	if lang.CompactFaithfulS5RecoveryCertified {
 		t.Fatal("the HTML profile unexpectedly enabled the Scala S5 route")
 	}
-	uncertified := &gotreesitter.Language{}
-	if attachBuiltinLanguageRuntimeProfile("html", sha256.Sum256([]byte("wrong html blob")), uncertified) ||
-		uncertified.CompactStrategy2ErrorRegionCertified || uncertified.CompactMissingTokenInsertionCertified ||
-		uncertified.CompactRecoveryPlainFirstCertified {
-		t.Fatal("a mismatched HTML blob received compact recovery certification")
-	}
 }
 
-func TestYAMLProfileCertifiesOnlyExactRecoverEOFArtifact(t *testing.T) {
+func TestYAMLProfileCertifiesRecoverEOFArtifact(t *testing.T) {
 	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
 	lang := YamlLanguage()
 	if !lang.CompactRecoverEOFCertified {
@@ -115,17 +108,6 @@ func TestYAMLProfileCertifiesOnlyExactRecoverEOFArtifact(t *testing.T) {
 		lang.CompactMissingTokenInsertionCertified {
 		t.Fatal("the YAML recover_eof profile enabled another recovery mechanism")
 	}
-	stale := &gotreesitter.Language{}
-	if attachBuiltinLanguageRuntimeProfile("yaml", sha256.Sum256([]byte("stale yaml blob")), stale) ||
-		stale.CompactRecoverEOFCertified {
-		t.Fatal("a stale YAML blob received recover_eof certification")
-	}
-	exact := &gotreesitter.Language{}
-	blob := BlobByName("yaml")
-	if len(blob) == 0 || !attachBuiltinLanguageRuntimeProfile("yaml", sha256.Sum256(blob), exact) ||
-		!exact.CompactRecoverEOFCertified || exact.CompactRecoverEOFArtifactReceipt != wantArtifact {
-		t.Fatal("the exact YAML blob did not receive recover_eof certification")
-	}
 }
 
 func TestJavaScriptProfileCertifiesCompactRecoveryFrontier(t *testing.T) {
@@ -154,15 +136,6 @@ func TestJavaScriptProfileCertifiesCompactRecoveryFrontier(t *testing.T) {
 	if !slices.Equal(lang.CompactRecoveryTerminalAliasRules, wantAliases) {
 		t.Fatalf("terminal alias rules=%+v, want %+v", lang.CompactRecoveryTerminalAliasRules, wantAliases)
 	}
-	uncertified := &gotreesitter.Language{}
-	if attachBuiltinLanguageRuntimeProfile("javascript", sha256.Sum256([]byte("wrong javascript blob")), uncertified) ||
-		uncertified.CompactStrategy2ErrorRegionCertified || uncertified.CompactMissingTokenInsertionCertified ||
-		uncertified.CompactRecoveryPlainFirstCertified || uncertified.CompactRecoveryTrailingLineageRetirementCertified ||
-		uncertified.CompactRecoveryErrorModeKeywordCaptureCertified ||
-		len(uncertified.CompactS3MixedShiftReduceClosureStates) != 0 ||
-		len(uncertified.CompactRecoveryTerminalAliasRules) != 0 {
-		t.Fatal("a mismatched JavaScript blob received compact recovery certification")
-	}
 }
 
 func TestScalaProfileCertifiesPackageTwoRecovery(t *testing.T) {
@@ -180,34 +153,16 @@ func TestScalaProfileCertifiesPackageTwoRecovery(t *testing.T) {
 	if lang.CompactStackSummaryRecoveryCertified || lang.CompactRecoverEOFCertified {
 		t.Fatal("the Scala package-two profile enabled a later recovery package")
 	}
-	uncertified := &gotreesitter.Language{}
-	if attachBuiltinLanguageRuntimeProfile("scala", sha256.Sum256([]byte("wrong scala blob")), uncertified) ||
-		uncertified.CompactStrategy2ErrorRegionCertified ||
-		uncertified.CompactMissingTokenInsertionCertified ||
-		uncertified.CompactS5EOFMissingInsertionCertified ||
-		uncertified.CompactFaithfulS5RecoveryCertified ||
-		uncertified.CompactPrimaryAcceptanceDerivationCertified ||
-		uncertified.CompactAcceptanceStructuralElectionCertified ||
-		uncertified.CompactRecoveryTrailingLineageRetirementCertified ||
-		uncertified.CompactRecoveryErrorModeKeywordCaptureCertified {
-		t.Fatal("a mismatched Scala blob received package-two recovery certification")
-	}
 }
 
-func TestBuiltinGoMissingVersionTurnsRequireExactBlobIdentity(t *testing.T) {
+func TestBuiltinGoMissingVersionTurnsAttachByName(t *testing.T) {
 	lang := GoLanguage()
 	if !lang.RecoveryMissingVersionTurnsCertified {
 		t.Fatal("built-in Go artifact lacks its missing-version scheduling grant")
 	}
-	identity := sha256.Sum256(BlobByName("go"))
-	identity[0] ^= 1
-	custom := &gotreesitter.Language{Name: "go"}
-	if attachBuiltinLanguageRuntimeProfile("go", identity, custom) || custom.RecoveryMissingVersionTurnsCertified {
-		t.Fatal("a different Go artifact received missing-version scheduling")
-	}
 	other := &gotreesitter.Language{Name: "custom"}
-	if attachBuiltinLanguageRuntimeProfile("custom", sha256.Sum256(BlobByName("go")), other) || other.RecoveryMissingVersionTurnsCertified {
-		t.Fatal("the Go artifact granted missing-version scheduling to a custom language")
+	if attachBuiltinLanguageRuntimeProfile("custom", other) || other.RecoveryMissingVersionTurnsCertified {
+		t.Fatal("the Go profile granted missing-version scheduling to a custom language")
 	}
 }
 
@@ -274,7 +229,7 @@ func TestBuiltinRuntimeProfilesStayNarrow(t *testing.T) {
 		t.Fatalf("builtinLanguageRuntimeProfiles has %d entries, want %d", got, want)
 	}
 	lang := &gotreesitter.Language{ExternalScanner: KotlinExternalScanner{}}
-	if attachBuiltinLanguageRuntimeProfile("ruby", [32]byte{}, lang) {
+	if attachBuiltinLanguageRuntimeProfile("custom", lang) {
 		t.Fatal("unknown runtime profile reported an attachment")
 	}
 	if got := lang.ExternalScannerFullParseRetryPolicy; got != gotreesitter.ExternalScannerFullParseRetryDefault {
@@ -351,7 +306,43 @@ func TestRuntimeProfileTerminalSymbolIgnoresNonterminalDuplicate(t *testing.T) {
 	}
 }
 
-func TestBuiltinObjcExactStackEquivalenceProfileRequiresExactBlobIdentity(t *testing.T) {
+func TestBuiltinCompactEOFProfilesRetireOnlyHTTPAndRobotField(t *testing.T) {
+	PurgeEmbeddedLanguageCache()
+	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
+
+	for _, test := range []struct {
+		name string
+		load func() *gotreesitter.Language
+	}{
+		{name: "http", load: HttpLanguage},
+		{name: "robot", load: RobotLanguage},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, ok := builtinLanguageRuntimeProfiles[test.name]; !ok {
+				t.Fatal("retired EOF profile lost its record")
+			}
+			if language := test.load(); language.CompactEOFAcceptNoActionSiblingsCertified {
+				t.Fatal("built-in artifact retained the legacy EOF sibling field")
+			}
+
+			custom := &gotreesitter.Language{Name: test.name}
+			AttachLanguageSupport(test.name, custom)
+			if custom.CompactEOFAcceptNoActionSiblingsCertified {
+				t.Fatal("same-name custom grammar enabled the retired EOF sibling field")
+			}
+
+			attached := &gotreesitter.Language{Name: test.name}
+			if attachBuiltinLanguageRuntimeProfile(test.name, attached) {
+				t.Fatal("retired profile unexpectedly changed a language field")
+			}
+			if attached.CompactEOFAcceptNoActionSiblingsCertified {
+				t.Fatal("retired profile enabled the legacy EOF sibling field")
+			}
+		})
+	}
+}
+
+func TestBuiltinObjcExactStackEquivalenceProfileAttaches(t *testing.T) {
 	PurgeEmbeddedLanguageCache()
 	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
 
@@ -365,66 +356,9 @@ func TestBuiltinObjcExactStackEquivalenceProfileRequiresExactBlobIdentity(t *tes
 	if custom.ExactStackNodeEquivalenceCertified {
 		t.Fatal("same-name custom Objective-C grammar enabled exact stack-node equivalence")
 	}
-
-	wrongIdentity := &gotreesitter.Language{Name: "objc"}
-	if attachBuiltinLanguageRuntimeProfile("objc", sha256.Sum256([]byte("uncertified")), wrongIdentity) {
-		t.Fatal("wrong Objective-C blob identity unexpectedly attached a runtime profile")
-	}
-	if wrongIdentity.ExactStackNodeEquivalenceCertified {
-		t.Fatal("wrong Objective-C blob identity enabled exact stack-node equivalence")
-	}
 }
 
-func TestBuiltinCompactEOFProfilesRetireOnlyHTTPAndRobotField(t *testing.T) {
-	PurgeEmbeddedLanguageCache()
-	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
-
-	for _, test := range []struct {
-		name string
-		load func() *gotreesitter.Language
-	}{
-		{name: "http", load: HttpLanguage},
-		{name: "robot", load: RobotLanguage},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			profile, ok := builtinLanguageRuntimeProfiles[test.name]
-			if !ok {
-				t.Fatal("retired EOF profile lost its exact blob record")
-			}
-			blob := BlobByName(test.name)
-			if len(blob) == 0 || sha256.Sum256(blob) != profile.blobSHA256 {
-				t.Fatal("retired EOF profile blob identity changed")
-			}
-			if language := test.load(); language.CompactEOFAcceptNoActionSiblingsCertified {
-				t.Fatal("exact built-in artifact retained the legacy EOF sibling field")
-			}
-
-			custom := &gotreesitter.Language{Name: test.name}
-			AttachLanguageSupport(test.name, custom)
-			if custom.CompactEOFAcceptNoActionSiblingsCertified {
-				t.Fatal("same-name custom grammar enabled the retired EOF sibling field")
-			}
-
-			wrongIdentity := &gotreesitter.Language{Name: test.name}
-			if attachBuiltinLanguageRuntimeProfile(test.name, sha256.Sum256([]byte("uncertified")), wrongIdentity) {
-				t.Fatal("wrong blob identity unexpectedly attached a runtime profile")
-			}
-			if wrongIdentity.CompactEOFAcceptNoActionSiblingsCertified {
-				t.Fatal("wrong blob identity enabled the retired EOF sibling field")
-			}
-
-			exact := &gotreesitter.Language{Name: test.name}
-			if attachBuiltinLanguageRuntimeProfile(test.name, profile.blobSHA256, exact) {
-				t.Fatal("exact retired profile unexpectedly changed a language field")
-			}
-			if exact.CompactEOFAcceptNoActionSiblingsCertified {
-				t.Fatal("exact retired profile enabled the legacy EOF sibling field")
-			}
-		})
-	}
-}
-
-func TestBuiltinCompactAcceptanceProfilesRequireExactBlobIdentity(t *testing.T) {
+func TestBuiltinCompactAcceptanceProfilesAttach(t *testing.T) {
 	tests := []struct {
 		name string
 		load func() *gotreesitter.Language
@@ -493,19 +427,11 @@ func TestBuiltinCompactAcceptanceProfilesRequireExactBlobIdentity(t *testing.T) 
 			if tt.want(custom) {
 				t.Fatal("same-name custom grammar enabled compact acceptance certification")
 			}
-
-			wrongIdentity := &gotreesitter.Language{Name: tt.name}
-			if attachBuiltinLanguageRuntimeProfile(tt.name, sha256.Sum256([]byte("uncertified")), wrongIdentity) {
-				t.Fatal("wrong blob identity unexpectedly attached a runtime profile")
-			}
-			if tt.want(wrongIdentity) {
-				t.Fatal("wrong blob identity enabled compact acceptance certification")
-			}
 		})
 	}
 }
 
-func TestBuiltinJsdocLexerSkippedPrefixProfileRequiresExactBlobIdentity(t *testing.T) {
+func TestBuiltinJsdocLexerSkippedPrefixProfileAttaches(t *testing.T) {
 	PurgeEmbeddedLanguageCache()
 	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
 
@@ -520,24 +446,16 @@ func TestBuiltinJsdocLexerSkippedPrefixProfileRequiresExactBlobIdentity(t *testi
 		t.Fatal("same-name custom JSDoc grammar enabled skipped-prefix certification")
 	}
 
-	stale := &gotreesitter.Language{Name: "jsdoc"}
-	if attachBuiltinLanguageRuntimeProfile("jsdoc", sha256.Sum256([]byte("stale")), stale) {
-		t.Fatal("stale JSDoc blob unexpectedly attached a runtime profile")
+	attached := &gotreesitter.Language{Name: "jsdoc"}
+	if !attachBuiltinLanguageRuntimeProfile("jsdoc", attached) {
+		t.Fatal("the JSDoc profile did not attach")
 	}
-	if stale.CompactLexerSkippedPrefixTilingCertified {
-		t.Fatal("stale JSDoc blob enabled skipped-prefix certification")
-	}
-
-	exact := &gotreesitter.Language{Name: "jsdoc"}
-	if !attachBuiltinLanguageRuntimeProfile("jsdoc", sha256.Sum256(BlobByName("jsdoc")), exact) {
-		t.Fatal("exact JSDoc blob did not attach its runtime profile")
-	}
-	if !exact.CompactLexerSkippedPrefixTilingCertified {
-		t.Fatal("exact JSDoc blob did not enable skipped-prefix certification")
+	if !attached.CompactLexerSkippedPrefixTilingCertified {
+		t.Fatal("the JSDoc profile did not enable skipped-prefix certification")
 	}
 }
 
-func TestBuiltinCompactConvergedSplitProfilesRequireExactBlobIdentity(t *testing.T) {
+func TestBuiltinCompactConvergedSplitProfilesAttach(t *testing.T) {
 	PurgeEmbeddedLanguageCache()
 	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
 
@@ -575,30 +493,18 @@ func TestBuiltinCompactConvergedSplitProfilesRequireExactBlobIdentity(t *testing
 				t.Fatal("same-name custom grammar enabled compact converged-split drops")
 			}
 
-			blob := BlobByName(test.name)
-			if len(blob) == 0 {
-				t.Fatalf("BlobByName(%s) returned no data", test.name)
+			attached := &gotreesitter.Language{Name: test.name}
+			if !attachBuiltinLanguageRuntimeProfile(test.name, attached) {
+				t.Fatal("the profile did not attach")
 			}
-			stale := &gotreesitter.Language{Name: test.name}
-			if attachBuiltinLanguageRuntimeProfile(test.name, sha256.Sum256([]byte("stale")), stale) {
-				t.Fatal("stale blob unexpectedly attached a runtime profile")
-			}
-			if stale.CompactConvergedReductionSplitDropsCertified {
-				t.Fatal("stale blob enabled compact converged-split drops")
-			}
-
-			exact := &gotreesitter.Language{Name: test.name}
-			if !attachBuiltinLanguageRuntimeProfile(test.name, sha256.Sum256(blob), exact) {
-				t.Fatal("exact blob did not attach its runtime profile")
-			}
-			if !exact.CompactConvergedReductionSplitDropsCertified {
-				t.Fatal("exact blob did not enable compact converged-split drops")
+			if !attached.CompactConvergedReductionSplitDropsCertified {
+				t.Fatal("the profile did not enable compact converged-split drops")
 			}
 		})
 	}
 }
 
-func TestBuiltinCompactPackedGSSVersionOrderProfileRequiresExactBlobIdentity(t *testing.T) {
+func TestBuiltinCompactPackedGSSVersionOrderProfileAttaches(t *testing.T) {
 	PurgeEmbeddedLanguageCache()
 	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
 
@@ -611,14 +517,6 @@ func TestBuiltinCompactPackedGSSVersionOrderProfileRequiresExactBlobIdentity(t *
 	AttachLanguageSupport("erlang", custom)
 	if custom.CompactPackedGSSVersionOrderCertified {
 		t.Fatal("same-name custom grammar enabled packed GSS version ordering")
-	}
-
-	stale := &gotreesitter.Language{Name: "erlang"}
-	if attachBuiltinLanguageRuntimeProfile("erlang", sha256.Sum256([]byte("stale-erlang-blob")), stale) {
-		t.Fatal("stale Erlang blob attached the runtime profile")
-	}
-	if stale.CompactPackedGSSVersionOrderCertified {
-		t.Fatal("stale Erlang blob enabled packed GSS version ordering")
 	}
 }
 
@@ -714,7 +612,7 @@ func TestBuiltinErlangPackedGSSVersionOrderPreservesLinearRecovery(t *testing.T)
 	}
 }
 
-func TestBuiltinOdinArenaDensityProfileRequiresExactBlobIdentity(t *testing.T) {
+func TestBuiltinOdinArenaDensityProfileAttaches(t *testing.T) {
 	PurgeEmbeddedLanguageCache()
 	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
 
@@ -729,30 +627,16 @@ func TestBuiltinOdinArenaDensityProfileRequiresExactBlobIdentity(t *testing.T) {
 		t.Fatal("same-name custom Odin grammar enabled the arena density cap")
 	}
 
-	blob := BlobByName("odin")
-	if len(blob) == 0 {
-		t.Fatal("BlobByName(odin) returned no data")
+	attached := &gotreesitter.Language{Name: "odin"}
+	if !attachBuiltinLanguageRuntimeProfile("odin", attached) {
+		t.Fatal("the Odin profile did not attach")
 	}
-	staleBlob := append([]byte(nil), blob...)
-	staleBlob[len(staleBlob)-1] ^= 1
-	stale := &gotreesitter.Language{Name: "odin"}
-	if attachBuiltinLanguageRuntimeProfile("odin", sha256.Sum256(staleBlob), stale) {
-		t.Fatal("stale Odin blob unexpectedly attached a runtime profile")
-	}
-	if stale.FullParseArenaDensityCapEnabled {
-		t.Fatal("stale Odin blob enabled the arena density cap")
-	}
-
-	exact := &gotreesitter.Language{Name: "odin"}
-	if !attachBuiltinLanguageRuntimeProfile("odin", sha256.Sum256(blob), exact) {
-		t.Fatal("exact Odin blob did not attach its runtime profile")
-	}
-	if !exact.FullParseArenaDensityCapEnabled {
-		t.Fatal("exact Odin blob did not enable the arena density cap")
+	if !attached.FullParseArenaDensityCapEnabled {
+		t.Fatal("the Odin profile did not enable the arena density cap")
 	}
 }
 
-func TestBuiltinAutomaticForestProfilesRequireExactBlobIdentity(t *testing.T) {
+func TestBuiltinAutomaticForestProfilesAttach(t *testing.T) {
 	tests := []struct {
 		name string
 		load func() *gotreesitter.Language
@@ -771,14 +655,6 @@ func TestBuiltinAutomaticForestProfilesRequireExactBlobIdentity(t *testing.T) {
 				t.Fatal("exact built-in artifact did not receive automatic forest certification")
 			}
 
-			wrongIdentity := &gotreesitter.Language{Name: tt.name}
-			if attachBuiltinLanguageRuntimeProfile(tt.name, sha256.Sum256([]byte("uncertified")), wrongIdentity) {
-				t.Fatal("wrong blob identity unexpectedly attached a runtime profile")
-			}
-			if wrongIdentity.AutomaticForestEnabledByDefault {
-				t.Fatal("wrong blob identity enabled automatic forest routing")
-			}
-
 			adapted := &gotreesitter.Language{Name: tt.name}
 			AttachLanguageSupport(tt.name, adapted)
 			if adapted.AutomaticForestEnabledByDefault {
@@ -788,18 +664,10 @@ func TestBuiltinAutomaticForestProfilesRequireExactBlobIdentity(t *testing.T) {
 	}
 }
 
-func TestEnforceDuplicateWideProfileRequiresExactBlobIdentity(t *testing.T) {
+func TestEnforceDuplicateWideProfileAttaches(t *testing.T) {
 	want := gotreesitter.FullParseAcceptedErrorRetryProfile{
 		ReuseCleanWideForWideRetry:   true,
 		ReuseCleanWideMinSourceBytes: 128 * 1024,
-	}
-
-	wrongSHA := &gotreesitter.Language{Name: "enforce"}
-	if attachBuiltinLanguageRuntimeProfile("enforce", sha256.Sum256([]byte("uncertified")), wrongSHA) {
-		t.Fatal("wrong Enforce blob SHA reported a runtime-profile attachment")
-	}
-	if got := wrongSHA.FullParseAcceptedErrorRetryProfile; got != (gotreesitter.FullParseAcceptedErrorRetryProfile{}) {
-		t.Fatalf("wrong Enforce blob SHA attached retry profile %+v", got)
 	}
 
 	adapted := &gotreesitter.Language{Name: "enforce"}
@@ -808,16 +676,12 @@ func TestEnforceDuplicateWideProfileRequiresExactBlobIdentity(t *testing.T) {
 		t.Fatalf("adapted Enforce language attached retry profile %+v", got)
 	}
 
-	blob := BlobByName("enforce")
-	if len(blob) == 0 {
-		t.Fatal("BlobByName(enforce) returned no data")
+	attached := &gotreesitter.Language{Name: "enforce"}
+	if !attachBuiltinLanguageRuntimeProfile("enforce", attached) {
+		t.Fatal("the Enforce profile did not attach")
 	}
-	exact := &gotreesitter.Language{Name: "enforce"}
-	if !attachBuiltinLanguageRuntimeProfile("enforce", sha256.Sum256(blob), exact) {
-		t.Fatal("exact Enforce blob did not attach duplicate-wide profile")
-	}
-	if got := exact.FullParseAcceptedErrorRetryProfile; got != want {
-		t.Fatalf("exact Enforce retry profile = %+v, want %+v", got, want)
+	if got := attached.FullParseAcceptedErrorRetryProfile; got != want {
+		t.Fatalf("Enforce retry profile = %+v, want %+v", got, want)
 	}
 }
 
@@ -856,27 +720,15 @@ func TestBuiltinHaskellConflictPolicyAttaches(t *testing.T) {
 	}
 }
 
-func TestBuiltinHaskellConflictPolicyRequiresCertifiedBlobAndAttachesOnce(t *testing.T) {
+func TestBuiltinHaskellConflictPolicyAttachesOnce(t *testing.T) {
 	lang := &gotreesitter.Language{Name: "haskell"}
-	if attachBuiltinLanguageRuntimeProfile("haskell", sha256.Sum256([]byte("uncertified")), lang) {
-		t.Fatal("uncertified Haskell blob reported a runtime-profile attachment")
-	}
-	if len(lang.ConflictPolicies) != 0 {
-		t.Fatalf("uncertified Haskell blob attached %d conflict policies", len(lang.ConflictPolicies))
-	}
-
-	blob := BlobByName("haskell")
-	if len(blob) == 0 {
-		t.Fatal("BlobByName(haskell) returned no data")
-	}
-	sum := sha256.Sum256(blob)
-	if !attachBuiltinLanguageRuntimeProfile("haskell", sum, lang) {
-		t.Fatal("certified Haskell blob did not attach its runtime profile")
+	if !attachBuiltinLanguageRuntimeProfile("haskell", lang) {
+		t.Fatal("the Haskell profile did not attach")
 	}
 	if got := len(lang.ConflictPolicies); got != 3 {
-		t.Fatalf("certified Haskell conflict policies = %d, want 3", got)
+		t.Fatalf("Haskell conflict policies = %d, want 3", got)
 	}
-	if attachBuiltinLanguageRuntimeProfile("haskell", sum, lang) {
+	if attachBuiltinLanguageRuntimeProfile("haskell", lang) {
 		t.Fatal("reattaching the same Haskell profile reported a change")
 	}
 	if got := len(lang.ConflictPolicies); got != 3 {
@@ -970,7 +822,7 @@ func TestBuiltinAgdaConflictPolicyExclusion(t *testing.T) {
 	}
 }
 
-func TestBuiltinMarkdownInlineConflictPolicyRequiresExactBlob(t *testing.T) {
+func TestBuiltinMarkdownInlineConflictPolicyAttaches(t *testing.T) {
 	PurgeEmbeddedLanguageCache()
 	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
 
@@ -1003,14 +855,6 @@ func TestBuiltinMarkdownInlineConflictPolicyRequiresExactBlob(t *testing.T) {
 	AttachLanguageSupport("markdown_inline", custom)
 	if len(custom.ConflictPolicies) != 0 {
 		t.Fatal("same-name custom grammar received the Markdown inline conflict policy")
-	}
-
-	stale := &gotreesitter.Language{Name: "markdown_inline"}
-	if attachBuiltinLanguageRuntimeProfile("markdown_inline", sha256.Sum256([]byte("stale")), stale) {
-		t.Fatal("stale Markdown inline blob reported a runtime-profile attachment")
-	}
-	if len(stale.ConflictPolicies) != 0 {
-		t.Fatal("stale Markdown inline blob received the conflict policy")
 	}
 }
 
@@ -1098,35 +942,6 @@ func TestBuiltinCConflictPolicyAttachesWildcard(t *testing.T) {
 		fold.Kind != gotreesitter.ConflictPolicyRepetitionReduce || len(fold.ReduceSymbols) != 1 ||
 		fold.ReduceSymbols[0] != 343 {
 		t.Fatalf("c conflict policy[1] = %+v, want wildcard repetition-reduce over enumerator_list_repeat1(343)", fold)
-	}
-}
-
-// TestBuiltinGomodCConflictPoliciesRequireCertifiedBlob mirrors the Haskell
-// fail-closed coverage for the two new certified profiles: an uncertified
-// blob identity must not attach any ConflictPolicies.
-func TestBuiltinGomodCConflictPoliciesRequireCertifiedBlob(t *testing.T) {
-	for _, name := range []string{"gomod", "c"} {
-		t.Run(name, func(t *testing.T) {
-			lang := &gotreesitter.Language{Name: name}
-			if attachBuiltinLanguageRuntimeProfile(name, sha256.Sum256([]byte("uncertified")), lang) {
-				t.Fatalf("uncertified %s blob reported a runtime-profile attachment", name)
-			}
-			if len(lang.ConflictPolicies) != 0 {
-				t.Fatalf("uncertified %s blob attached %d conflict policies", name, len(lang.ConflictPolicies))
-			}
-
-			blob := BlobByName(name)
-			if len(blob) == 0 {
-				t.Fatalf("BlobByName(%s) returned no data", name)
-			}
-			sum := sha256.Sum256(blob)
-			if !attachBuiltinLanguageRuntimeProfile(name, sum, lang) {
-				t.Fatalf("certified %s blob did not attach its runtime profile", name)
-			}
-			if len(lang.ConflictPolicies) == 0 {
-				t.Fatalf("certified %s blob attached no conflict policies", name)
-			}
-		})
 	}
 }
 
@@ -1244,7 +1059,7 @@ func TestBuiltinBoundedAcceptedErrorRetryProfilesAttach(t *testing.T) {
 	}
 }
 
-func TestBuiltinExternalScannerRetryProfilesRequireCertifiedBlob(t *testing.T) {
+func TestBuiltinExternalScannerRetryProfilesAttachByName(t *testing.T) {
 	tests := []struct {
 		name    string
 		scanner gotreesitter.ExternalScanner
@@ -1257,48 +1072,20 @@ func TestBuiltinExternalScannerRetryProfilesRequireCertifiedBlob(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lang := &gotreesitter.Language{Name: tt.name, ExternalScanner: tt.scanner}
-			if attachBuiltinLanguageRuntimeProfile(tt.name, sha256.Sum256([]byte("uncertified")), lang) {
-				t.Fatal("uncertified blob reported a runtime-profile attachment")
-			}
-			if got := lang.ExternalScannerFullParseRetryPolicy; got != gotreesitter.ExternalScannerFullParseRetryDefault {
-				t.Fatalf("uncertified blob changed policy to %d", got)
-			}
-
-			blob := BlobByName(tt.name)
-			if len(blob) == 0 {
-				t.Fatalf("BlobByName(%s) returned no data", tt.name)
-			}
-			if !attachBuiltinLanguageRuntimeProfile(tt.name, sha256.Sum256(blob), lang) {
-				t.Fatal("certified blob did not attach its runtime profile")
+			if !attachBuiltinLanguageRuntimeProfile(tt.name, lang) {
+				t.Fatal("the profile did not attach")
 			}
 			if got := lang.ExternalScannerFullParseRetryPolicy; got != gotreesitter.ExternalScannerFullParseRetrySkipRepeat {
-				t.Fatalf("certified blob policy = %d, want skip-repeat", got)
+				t.Fatalf("profile policy = %d, want skip-repeat", got)
 			}
 		})
 	}
 }
 
-func TestBuiltinCSharpRetryProfileRequiresCertifiedBlob(t *testing.T) {
+func TestBuiltinCSharpRetryProfileAttaches(t *testing.T) {
 	lang := &gotreesitter.Language{ExternalScanner: CSharpExternalScanner{}}
-	if attachBuiltinLanguageRuntimeProfile("c_sharp", sha256.Sum256([]byte("uncertified")), lang) {
-		t.Fatal("uncertified C# blob reported a runtime-profile attachment")
-	}
-	if got := lang.ExternalScannerFullParseRetryPolicy; got != gotreesitter.ExternalScannerFullParseRetryDefault {
-		t.Fatalf("uncertified C# blob changed scanner retry policy to %d", got)
-	}
-	if got := lang.FullParseAcceptedErrorRetryProfile; got != (gotreesitter.FullParseAcceptedErrorRetryProfile{}) {
-		t.Fatalf("uncertified C# blob changed retry profile to %+v", got)
-	}
-	if lang.FullParseGSSConvergenceEnabled {
-		t.Fatal("uncertified C# blob enabled full-parse GSS convergence")
-	}
-
-	blob := BlobByName("c_sharp")
-	if len(blob) == 0 {
-		t.Fatal("BlobByName(c_sharp) returned no data")
-	}
-	if !attachBuiltinLanguageRuntimeProfile("c_sharp", sha256.Sum256(blob), lang) {
-		t.Fatal("certified C# blob did not attach its runtime profile")
+	if !attachBuiltinLanguageRuntimeProfile("c_sharp", lang) {
+		t.Fatal("the C# profile did not attach")
 	}
 	if got := lang.ExternalScannerFullParseRetryPolicy; got != gotreesitter.ExternalScannerFullParseRetrySkipRepeat {
 		t.Fatalf("certified C# scanner retry policy = %d, want skip-repeat", got)
@@ -1318,10 +1105,9 @@ func TestBuiltinCSharpRetryProfileRequiresCertifiedBlob(t *testing.T) {
 	}
 }
 
-// TestBuiltinLegacyMergeAdmissionProfilesRequireExactBlobIdentity pins the
-// Q0 per-language merge admission entries (#1311). Each grant attaches only
-// to its measured grammar artifact.
-func TestBuiltinLegacyMergeAdmissionProfilesRequireExactBlobIdentity(t *testing.T) {
+// TestBuiltinLegacyMergeAdmissionProfilesAttach pins the Q0 per-language
+// merge admission entries (#1311).
+func TestBuiltinLegacyMergeAdmissionProfilesAttach(t *testing.T) {
 	tests := []struct {
 		name        string
 		policy      gotreesitter.LegacyMergeAdmissionPolicy
@@ -1334,18 +1120,9 @@ func TestBuiltinLegacyMergeAdmissionProfilesRequireExactBlobIdentity(t *testing.
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			stale := &gotreesitter.Language{}
-			attachBuiltinLanguageRuntimeProfile(test.name, sha256.Sum256([]byte("uncertified")), stale)
-			if stale.LegacyMergeAdmission != 0 || stale.FullParseGSSConvergenceEnabled {
-				t.Fatalf("stale %s blob attached merge admission %d, convergence %t", test.name, stale.LegacyMergeAdmission, stale.FullParseGSSConvergenceEnabled)
-			}
-			blob := BlobByName(test.name)
-			if len(blob) == 0 {
-				t.Fatalf("BlobByName(%s) returned no data", test.name)
-			}
 			exact := &gotreesitter.Language{}
-			if !attachBuiltinLanguageRuntimeProfile(test.name, sha256.Sum256(blob), exact) {
-				t.Fatalf("certified %s blob did not attach its runtime profile", test.name)
+			if !attachBuiltinLanguageRuntimeProfile(test.name, exact) {
+				t.Fatalf("the %s profile did not attach", test.name)
 			}
 			if exact.LegacyMergeAdmission != test.policy {
 				t.Fatalf("%s merge admission = %d, want %d", test.name, exact.LegacyMergeAdmission, test.policy)
@@ -1357,58 +1134,19 @@ func TestBuiltinLegacyMergeAdmissionProfilesRequireExactBlobIdentity(t *testing.
 	}
 }
 
-func TestBuiltinRecoveryVersionOrderRequiresExactBlobIdentity(t *testing.T) {
+func TestBuiltinRecoveryVersionOrderAttaches(t *testing.T) {
 	for _, name := range []string{"c", "cpp"} {
 		t.Run(name, func(t *testing.T) {
-			stale := &gotreesitter.Language{}
-			attachBuiltinLanguageRuntimeProfile(name, sha256.Sum256([]byte("uncertified")), stale)
-			if stale.RecoveryStackVersionOrderEnabled {
-				t.Fatal("uncertified blob enabled recovery version ordering")
-			}
-			exact := &gotreesitter.Language{}
-			attachBuiltinLanguageRuntimeProfile(name, sha256.Sum256(BlobByName(name)), exact)
-			if !exact.RecoveryStackVersionOrderEnabled {
-				t.Fatal("certified blob did not enable recovery version ordering")
+			attached := &gotreesitter.Language{}
+			attachBuiltinLanguageRuntimeProfile(name, attached)
+			if !attached.RecoveryStackVersionOrderEnabled {
+				t.Fatal("the profile did not enable recovery version ordering")
 			}
 		})
 	}
 }
 
-func TestBuiltinBoundedAcceptedErrorRetryProfilesRequireCertifiedBlob(t *testing.T) {
-	tests := []struct {
-		name string
-		want gotreesitter.FullParseAcceptedErrorRetryProfile
-	}{
-		{name: "asm", want: gotreesitter.FullParseAcceptedErrorRetryProfile{MinSourceBytes: 11 * 1024, InitialStackCeiling: 8}},
-		{name: "java", want: gotreesitter.FullParseAcceptedErrorRetryProfile{MinSourceBytes: 64 * 1024, InitialStackCeiling: 14}},
-		{name: "groovy", want: gotreesitter.FullParseAcceptedErrorRetryProfile{MinSourceBytes: 64 * 1024, InitialStackCeiling: 2}},
-		{name: "d", want: gotreesitter.FullParseAcceptedErrorRetryProfile{MinSourceBytes: 64 * 1024, InitialStackCeiling: 3}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			lang := &gotreesitter.Language{Name: tt.name}
-			if attachBuiltinLanguageRuntimeProfile(tt.name, sha256.Sum256([]byte("uncertified")), lang) {
-				t.Fatalf("uncertified %s blob reported a runtime-profile attachment", tt.name)
-			}
-			if got := lang.FullParseAcceptedErrorRetryProfile; got != (gotreesitter.FullParseAcceptedErrorRetryProfile{}) {
-				t.Fatalf("uncertified %s blob changed retry profile to %+v", tt.name, got)
-			}
-
-			blob := BlobByName(tt.name)
-			if len(blob) == 0 {
-				t.Fatalf("BlobByName(%s) returned no data", tt.name)
-			}
-			if !attachBuiltinLanguageRuntimeProfile(tt.name, sha256.Sum256(blob), lang) {
-				t.Fatalf("certified %s blob did not attach its runtime profile", tt.name)
-			}
-			if got := lang.FullParseAcceptedErrorRetryProfile; got != tt.want {
-				t.Fatalf("certified %s retry profile = %+v, want %+v", tt.name, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestResidualRetryProfilesRequireExactBlobIdentity(t *testing.T) {
+func TestResidualRetryProfilesAttach(t *testing.T) {
 	tests := []struct {
 		name string
 		want gotreesitter.FullParseAcceptedErrorRetryProfile
@@ -1448,36 +1186,24 @@ func TestResidualRetryProfilesRequireExactBlobIdentity(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			wrongSHA := &gotreesitter.Language{Name: tt.name}
-			if attachBuiltinLanguageRuntimeProfile(tt.name, sha256.Sum256([]byte("uncertified")), wrongSHA) {
-				t.Fatal("wrong blob SHA reported a runtime-profile attachment")
-			}
-			if got := wrongSHA.FullParseAcceptedErrorRetryProfile; got != (gotreesitter.FullParseAcceptedErrorRetryProfile{}) {
-				t.Fatalf("wrong blob SHA attached retry profile %+v", got)
-			}
-
 			adapted := &gotreesitter.Language{Name: tt.name}
 			AttachLanguageSupport(tt.name, adapted)
 			if got := adapted.FullParseAcceptedErrorRetryProfile; got != (gotreesitter.FullParseAcceptedErrorRetryProfile{}) {
 				t.Fatalf("adapted same-name language attached retry profile %+v", got)
 			}
 
-			blob := BlobByName(tt.name)
-			if len(blob) == 0 {
-				t.Fatal("BlobByName returned no data")
+			attached := &gotreesitter.Language{Name: tt.name}
+			if !attachBuiltinLanguageRuntimeProfile(tt.name, attached) {
+				t.Fatal("the profile did not attach")
 			}
-			exact := &gotreesitter.Language{Name: tt.name}
-			if !attachBuiltinLanguageRuntimeProfile(tt.name, sha256.Sum256(blob), exact) {
-				t.Fatal("exact blob did not attach its runtime profile")
-			}
-			if got := exact.FullParseAcceptedErrorRetryProfile; got != tt.want {
-				t.Fatalf("exact blob retry profile = %+v, want %+v", got, tt.want)
+			if got := attached.FullParseAcceptedErrorRetryProfile; got != tt.want {
+				t.Fatalf("profile retry profile = %+v, want %+v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestCSharpNativeResultCompatibilityRequiresExactBlobIdentity(t *testing.T) {
+func TestCSharpNativeResultCompatibilityAttaches(t *testing.T) {
 	want := gotreesitter.ResultCompatibilityCSharpNativeNotNull |
 		gotreesitter.ResultCompatibilityCSharpNativeUnicodeIdentifiers |
 		gotreesitter.ResultCompatibilityCSharpNativeScopedLambdaStatements |
@@ -1485,33 +1211,21 @@ func TestCSharpNativeResultCompatibilityRequiresExactBlobIdentity(t *testing.T) 
 		gotreesitter.ResultCompatibilityCSharpNativeQueryExpressions |
 		gotreesitter.ResultCompatibilityNativeRecoveredStructure
 
-	wrongSHA := &gotreesitter.Language{Name: "c_sharp"}
-	if attachBuiltinLanguageRuntimeProfile("c_sharp", sha256.Sum256([]byte("uncertified")), wrongSHA) {
-		t.Fatal("wrong blob SHA reported a runtime-profile attachment")
-	}
-	if got := wrongSHA.NativeResultCompatibility; got != 0 {
-		t.Fatalf("wrong blob SHA attached native result compatibility %#x", got)
-	}
-
 	adapted := &gotreesitter.Language{Name: "c_sharp"}
 	AttachLanguageSupport("c_sharp", adapted)
 	if got := adapted.NativeResultCompatibility; got != 0 {
-		t.Fatalf("AttachLanguageSupport certified native result compatibility without blob identity: %#x", got)
+		t.Fatalf("AttachLanguageSupport certified native result compatibility: %#x", got)
 	}
 
-	blob := BlobByName("c_sharp")
-	if len(blob) == 0 {
-		t.Fatal("BlobByName(c_sharp) returned no data")
+	attached := &gotreesitter.Language{Name: "c_sharp"}
+	if !attachBuiltinLanguageRuntimeProfile("c_sharp", attached) {
+		t.Fatal("the C# profile did not attach")
 	}
-	exact := &gotreesitter.Language{Name: "c_sharp"}
-	if !attachBuiltinLanguageRuntimeProfile("c_sharp", sha256.Sum256(blob), exact) {
-		t.Fatal("exact C# blob did not attach its runtime profile")
-	}
-	if got := exact.NativeResultCompatibility; got != want {
-		t.Fatalf("exact profile NativeResultCompatibility = %#x, want %#x", got, want)
+	if got := attached.NativeResultCompatibility; got != want {
+		t.Fatalf("profile NativeResultCompatibility = %#x, want %#x", got, want)
 	}
 
-	loaded, err := LoadLanguage("c_sharp", blob)
+	loaded, err := LoadLanguage("c_sharp", BlobByName("c_sharp"))
 	if err != nil {
 		t.Fatalf("LoadLanguage(c_sharp): %v", err)
 	}
@@ -1523,7 +1237,7 @@ func TestCSharpNativeResultCompatibilityRequiresExactBlobIdentity(t *testing.T) 
 	}
 }
 
-func TestCollapsedChildNativeCapabilityRequiresExactBlobIdentity(t *testing.T) {
+func TestCollapsedChildNativeCapabilityAttaches(t *testing.T) {
 	want := gotreesitter.ResultCompatibilityNativeCollapsedChildren
 	tests := []struct {
 		name string
@@ -1540,14 +1254,6 @@ func TestCollapsedChildNativeCapabilityRequiresExactBlobIdentity(t *testing.T) {
 	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			wrongSHA := &gotreesitter.Language{Name: tt.name}
-			if attachBuiltinLanguageRuntimeProfile(tt.name, sha256.Sum256([]byte("uncertified")), wrongSHA) {
-				t.Fatal("wrong blob SHA reported a runtime-profile attachment")
-			}
-			if wrongSHA.NativeResultCompatibility&want != 0 {
-				t.Fatal("wrong blob SHA attached collapsed-child capability")
-			}
-
 			adapted := &gotreesitter.Language{Name: tt.name}
 			AttachLanguageSupport(tt.name, adapted)
 			if adapted.NativeResultCompatibility&want != 0 {
@@ -1562,37 +1268,7 @@ func TestCollapsedChildNativeCapabilityRequiresExactBlobIdentity(t *testing.T) {
 	}
 }
 
-func TestBuiltinCompleteAcceptedErrorRetryProfileRequiresCertifiedBlob(t *testing.T) {
-	for _, name := range []string{"c", "caddy", "c_sharp", "haxe", "kdl", "odin", "rego", "scss", "swift", "tcl", "v"} {
-		t.Run(name, func(t *testing.T) {
-			lang := &gotreesitter.Language{Name: name}
-			if attachBuiltinLanguageRuntimeProfile(name, sha256.Sum256([]byte("uncertified")), lang) {
-				t.Fatalf("uncertified %s blob reported a runtime-profile attachment", name)
-			}
-			if got := lang.FullParseAcceptedErrorRetryProfile; got != (gotreesitter.FullParseAcceptedErrorRetryProfile{}) {
-				t.Fatalf("uncertified %s blob changed retry profile to %+v", name, got)
-			}
-
-			blob := BlobByName(name)
-			if len(blob) == 0 {
-				t.Fatalf("BlobByName(%s) returned no data", name)
-			}
-			if !attachBuiltinLanguageRuntimeProfile(name, sha256.Sum256(blob), lang) {
-				t.Fatalf("certified %s blob did not attach its runtime profile", name)
-			}
-			if name == "v" {
-				profile := lang.FullParseAcceptedErrorRetryProfile
-				if profile.SkipInitialCompleteAcceptedErrorMergeRetry || !profile.ReuseCleanWideForWideRetry {
-					t.Fatalf("certified %s retry profile = %+v, want clean-wide reuse certification", name, profile)
-				}
-			} else if !lang.FullParseAcceptedErrorRetryProfile.SkipCompleteAcceptedErrorRetry {
-				t.Fatalf("certified %s retry profile = %+v, want skip-complete certification", name, lang.FullParseAcceptedErrorRetryProfile)
-			}
-		})
-	}
-}
-
-func TestAttachLanguageSupportDoesNotCertifyWithoutBlobIdentity(t *testing.T) {
+func TestAttachLanguageSupportDoesNotAttachRuntimeProfiles(t *testing.T) {
 	base := KotlinLanguage()
 	lang := &gotreesitter.Language{
 		Name:            base.Name,
@@ -1648,22 +1324,9 @@ func TestNativeUnaryWrapperFlatteningProfileCensus(t *testing.T) {
 	if got, want := rule.WrapperPreGotoState, gotreesitter.StateID(4258); got != want {
 		t.Fatalf("F# wrapper pre-goto state = %d, want %d", got, want)
 	}
-
-	stale := &gotreesitter.Language{
-		Name:           language.Name,
-		StateCount:     language.StateCount,
-		SymbolNames:    language.SymbolNames,
-		SymbolMetadata: language.SymbolMetadata,
-	}
-	if attachBuiltinLanguageRuntimeProfile("fsharp", [32]byte{}, stale) {
-		t.Fatal("stale F# blob identity attached the unary-wrapper profile")
-	}
-	if len(stale.NativeUnaryWrapperFlattening) != 0 {
-		t.Fatalf("stale F# unary-wrapper rules = %v, want none", stale.NativeUnaryWrapperFlattening)
-	}
 }
 
-func TestSwiftErrorModeExternalSymbolsRequireExactBlob(t *testing.T) {
+func TestSwiftErrorModeExternalSymbolsAttach(t *testing.T) {
 	PurgeEmbeddedLanguageCache()
 	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
 	lang := SwiftLanguage()
@@ -1677,26 +1340,20 @@ func TestSwiftErrorModeExternalSymbolsRequireExactBlob(t *testing.T) {
 		}
 	}
 	rows := len(lang.ExternalLexStates)
-	attachBuiltinLanguageRuntimeProfile("swift", sha256.Sum256(BlobByName("swift")), lang)
+	attachBuiltinLanguageRuntimeProfile("swift", lang)
 	if len(lang.ExternalLexStates) != rows {
 		t.Fatal("reattaching the profile grew the scanner table")
 	}
 
-	for _, exact := range []bool{false, true} {
-		modes := []gotreesitter.LexMode{{ExternalLexState: 1}, {ExternalLexState: 1}}
-		states := [][]bool{{false, false}, {true, false}}
-		custom := &gotreesitter.Language{Name: "swift", LexModes: modes, ExternalLexStates: states, ExternalSymbols: []gotreesitter.Symbol{1, 2}}
-		sum := sha256.Sum256([]byte("stale"))
-		if exact {
-			sum = sha256.Sum256(BlobByName("swift"))
-		}
-		attachBuiltinLanguageRuntimeProfile("swift", sum, custom)
-		if modes[0].ExternalLexState != 1 || states[1][1] || custom.LexModes[1].ExternalLexState != 1 {
-			t.Fatal("ERROR row changed an ordinary scanner row or shared table")
-		}
-		if got := len(custom.ExternalLexStates); got != map[bool]int{false: 2, true: 3}[exact] {
-			t.Fatalf("exact=%v scanner rows=%d", exact, got)
-		}
+	modes := []gotreesitter.LexMode{{ExternalLexState: 1}, {ExternalLexState: 1}}
+	states := [][]bool{{false, false}, {true, false}}
+	custom := &gotreesitter.Language{Name: "swift", LexModes: modes, ExternalLexStates: states, ExternalSymbols: []gotreesitter.Symbol{1, 2}}
+	attachBuiltinLanguageRuntimeProfile("swift", custom)
+	if modes[0].ExternalLexState != 1 || states[1][1] || custom.LexModes[1].ExternalLexState != 1 {
+		t.Fatal("ERROR row changed an ordinary scanner row or shared table")
+	}
+	if got := len(custom.ExternalLexStates); got != 3 {
+		t.Fatalf("scanner rows=%d, want 3", got)
 	}
 	adapted := &gotreesitter.Language{Name: "swift", LexModes: []gotreesitter.LexMode{{}}, ExternalSymbols: []gotreesitter.Symbol{1}}
 	AttachLanguageSupport("swift", adapted)
@@ -1705,22 +1362,11 @@ func TestSwiftErrorModeExternalSymbolsRequireExactBlob(t *testing.T) {
 	}
 }
 
-func TestRecoveryMissingVersionTurnsRequireExactBlob(t *testing.T) {
+func TestRecoveryMissingVersionTurnsAttach(t *testing.T) {
 	PurgeEmbeddedLanguageCache()
 	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
 	if !Language("sql").RecoveryMissingVersionTurnsCertified {
-		t.Fatal("exact embedded SQL grammar did not acquire recovery turns")
-	}
-	for _, exact := range []bool{false, true} {
-		lang := &gotreesitter.Language{Name: "sql"}
-		sum := sha256.Sum256([]byte("stale"))
-		if exact {
-			sum = sha256.Sum256(BlobByName("sql"))
-		}
-		attachBuiltinLanguageRuntimeProfile("sql", sum, lang)
-		if lang.RecoveryMissingVersionTurnsCertified != exact {
-			t.Fatalf("exact=%v recovery turns certified=%v", exact, lang.RecoveryMissingVersionTurnsCertified)
-		}
+		t.Fatal("embedded SQL grammar did not acquire recovery turns")
 	}
 	adapted := &gotreesitter.Language{Name: "sql"}
 	AttachLanguageSupport("sql", adapted)
@@ -1729,7 +1375,7 @@ func TestRecoveryMissingVersionTurnsRequireExactBlob(t *testing.T) {
 	}
 }
 
-func TestBuiltinConflictActionVersionOrderRequiresExactBlobIdentity(t *testing.T) {
+func TestBuiltinConflictActionVersionOrderAttaches(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
 		load             func() *gotreesitter.Language
@@ -1746,10 +1392,6 @@ func TestBuiltinConflictActionVersionOrderRequiresExactBlobIdentity(t *testing.T
 			AttachLanguageSupport(name, custom)
 			if custom.ConflictActionVersionOrderCertified || custom.CompactPackedGSSVersionOrderCertified || custom.ExactStackNodeEquivalenceCertified {
 				t.Fatal("same-name custom artifact received certification")
-			}
-			stale := &gotreesitter.Language{Name: name}
-			if attachBuiltinLanguageRuntimeProfile(name, sha256.Sum256([]byte("stale")), stale) || stale.ConflictActionVersionOrderCertified || stale.CompactPackedGSSVersionOrderCertified || stale.ExactStackNodeEquivalenceCertified {
-				t.Fatal("stale artifact received certification")
 			}
 		})
 	}

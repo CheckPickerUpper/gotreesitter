@@ -1,11 +1,6 @@
 package grammarruntime
 
-import (
-	"crypto/sha256"
-	"testing"
-
-	gotreesitter "github.com/odvcencio/gotreesitter"
-)
+import "testing"
 
 func TestGoStringTerminalsRemainVisibleBeforeReduction(t *testing.T) {
 	lang := GoLanguage()
@@ -23,13 +18,5 @@ func TestGoStringTerminalsRemainVisibleBeforeReduction(t *testing.T) {
 		if !found {
 			t.Fatalf("missing visible terminal %s", name)
 		}
-	}
-	uncertified := &gotreesitter.Language{
-		TokenCount:     2,
-		SymbolNames:    []string{"end", "_interpreted_string_literal_token1"},
-		SymbolMetadata: make([]gotreesitter.SymbolMetadata, 2),
-	}
-	if attachBuiltinLanguageRuntimeProfile("go", sha256.Sum256([]byte("stale grammar")), uncertified) || uncertified.SymbolMetadata[1].Visible {
-		t.Fatal("an uncertified grammar acquired the visible terminal profile")
 	}
 }

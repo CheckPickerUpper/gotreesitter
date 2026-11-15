@@ -1,13 +1,12 @@
 package grammarruntime
 
 import (
-	"crypto/sha256"
 	"testing"
 
 	ts "github.com/odvcencio/gotreesitter"
 )
 
-func TestPerlDeclaredShiftProfileRequiresExactBlob(t *testing.T) {
+func TestPerlDeclaredShiftProfileAttaches(t *testing.T) {
 	PurgeEmbeddedLanguageCache()
 	t.Cleanup(func() { PurgeEmbeddedLanguageCache() })
 	lang := Language("perl")
@@ -38,9 +37,5 @@ func TestPerlDeclaredShiftProfileRequiresExactBlob(t *testing.T) {
 	}
 	if q.State != ts.ConflictPolicyAnyState || q.Lookahead != 23 || lang.SymbolNames[q.ReduceSymbols[0]] != "function" {
 		t.Fatalf("call profile=%+v", q)
-	}
-	uncertified := &ts.Language{}
-	if attachBuiltinLanguageRuntimeProfile("perl", sha256.Sum256([]byte("uncertified Perl")), uncertified) || len(uncertified.ConflictPolicies) != 0 {
-		t.Fatal("uncertified blob received conflict rules")
 	}
 }
