@@ -1920,6 +1920,19 @@ func (v *nativeNodeViews) copyTree(tree *Tree) *Tree {
 
 const compactNodeViewsEnabled = core.NativeNodeViewsEnabled
 
-func compactNodeViewsForContract(identity [32]byte) bool {
-	return core.NativeNodeViewsForContract(identity)
+// compactNodeViewsForLanguage reports whether the compact candidate route
+// publishes native node views for lang in this build.
+func compactNodeViewsForLanguage(lang *Language) bool {
+	if lang == nil {
+		return false
+	}
+	switch lang.CompactNativeSelectedPublication {
+	case CompactNativeSelectedQualified:
+		return true
+	case CompactNativeSelectedExperimental:
+		return compactNodeViewsEnabled
+	case CompactNativeSelectedUnqualified:
+		return false
+	}
+	return false
 }

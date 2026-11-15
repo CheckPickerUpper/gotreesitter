@@ -872,7 +872,7 @@ func (a *parserCoreRootTables) SelectedStorePolicy() (core.SelectedStorePolicy, 
 		return core.SelectedStorePolicy{}, nil
 	}
 	policy, err := buildParserCoreSelectedStorePolicy(a.parser)
-	if identity, valid := a.TableIdentity(); err == nil && valid && core.NativeSelectedSnapshotDefaultContract(identity) {
+	if err == nil && a.parser.language != nil && a.parser.language.CompactNativeSelectedPublication == CompactNativeSelectedQualified {
 		policy.TypeArguments = parserCoreTypeArgumentPolicy(a.parser.language)
 	}
 	return policy, err
@@ -13889,10 +13889,6 @@ func (s *diagnosticParserCoreGenericScheduler) publishTotals() {
 }
 
 func authenticatedParserCoreGoLanguage(scanner ExternalScanner) (*Language, error) {
-	const goBlobSHA256 = "4456f9b11706face73bd511d6e80bbd2f0d468055065296db6f5334fa101d379"
-	if fmt.Sprintf("%x", sha256.Sum256(parserCoreCertifiedGoBlob)) != goBlobSHA256 {
-		return nil, errors.New("parser-core phase zero: certified Go grammar identity mismatch")
-	}
 	scannerType := reflect.TypeOf(scanner)
 	if scannerType == nil || scannerType.Kind() != reflect.Struct || scannerType.PkgPath() != "github.com/odvcencio/gotreesitter/grammars/runtime" || scannerType.Name() != "GoExternalScanner" {
 		return nil, errors.New("parser-core phase zero: certified Go external scanner identity mismatch")
@@ -13905,6 +13901,7 @@ func authenticatedParserCoreGoLanguage(scanner ExternalScanner) (*Language, erro
 	decoded.ExternalScanner = scanner
 	decoded.CompactConvergedReductionSplitDropsCertified = true
 	decoded.CompactOwnedEOFRecoveryCertified = true
+	decoded.CompactNativeSelectedPublication = CompactNativeSelectedQualified
 	CertifyCRecoveryCostCompetition(decoded)
 	return decoded, nil
 }

@@ -171,7 +171,9 @@ func TestBuiltinRuntimeProfilesStayNarrow(t *testing.T) {
 	// without enabling its broader packed-reduction transaction ordering.
 	// 57 = the prior 60 less YAML's recover_eof entry and the empty HTTP and
 	// Robot entries.
-	if got, want := len(builtinLanguageRuntimeProfiles), 57; got != want {
+	// 58 = the prior 57 plus YAML's experimental native selected publication,
+	// which its blob digest selected before profiles were keyed by name.
+	if got, want := len(builtinLanguageRuntimeProfiles), 58; got != want {
 		t.Fatalf("builtinLanguageRuntimeProfiles has %d entries, want %d", got, want)
 	}
 	lang := &gotreesitter.Language{ExternalScanner: KotlinExternalScanner{}}

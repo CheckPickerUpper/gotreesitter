@@ -39,6 +39,7 @@ type builtinLanguageRuntimeProfile struct {
 	compactS5EOFMissingInsertion        bool
 	compactFaithfulS5Recovery           bool
 	compactOwnedEOFRecovery             bool
+	compactNativeSelectedPublication    gotreesitter.CompactNativeSelectedPublication
 	compactRecoveryTrailingRetirement   bool
 	compactRecoveryErrorModeKeyword     bool
 	compactRecoveryPlainFirst           bool
@@ -106,17 +107,19 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 	// against the production parser and the tree-sitter C oracle.
 	// The owned EOF bundle requires its executed recovery route before publication.
 	"go": {
-		// Re-certified 2026-10-24 against grammars/grammar_blobs/go.bin
-		// SHA-256 4456f9b11706face73bd511d6e80bbd2f0d468055065296db6f5334fa101d379,
-		// regenerated with cmd/grammargen (no -lr-split; -lr-split
-		// interacts badly with the Go external ASI scanner, see
+		// go.bin is generated with cmd/grammargen without -lr-split, which
+		// interacts badly with the Go external ASI scanner (see
 		// grammargen/README.md "Go's blob is generated without -lr-split").
-		// The compact/converged-split-drops and owned-EOF-recovery
-		// certifications were re-validated against this blob via the
-		// cgo_harness Go compact/recovery receipts (TestGoCompactIncrementalExecution*,
-		// TestGoCompactRecoveryVersionTurnsLockedC, TestStage6GoCompactCertification).
+		// The cgo_harness Go compact/recovery receipts
+		// (TestGoCompactIncrementalExecution*,
+		// TestGoCompactRecoveryVersionTurnsLockedC,
+		// TestStage6GoCompactCertification) certify the converged-split-drops
+		// and owned-EOF-recovery settings.
 		compactConvergedSplitDrops: true,
 		compactOwnedEOFRecovery:    true,
+		// The indexed builder implements Go's result normalization, including
+		// its type-argument policy.
+		compactNativeSelectedPublication: gotreesitter.CompactNativeSelectedQualified,
 		// Let the absorbing version compete before the eagerly shifted
 		// missing-target version, matching C's assignment-error election.
 		recoveryMissingVersionTurns: true,
@@ -138,10 +141,8 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 			{internalName: "_interpreted_string_literal_token1", publicName: "interpreted_string_literal_content"},
 		},
 	},
-	// Re-certified 2026-09-20 against grammars/grammar_blobs/erlang.bin
-	// SHA-256 aa63243bd946d324bfb335d84c162cbaf8cc9922feef71de17296a18186ecedf
-	// (WhatsApp/tree-sitter-erlang bump to 6ba4c762eb30). Both grants were
-	// re-validated against this blob: compactConvergedSplitDrops via
+	// Certified at WhatsApp/tree-sitter-erlang 6ba4c762eb30:
+	// compactConvergedSplitDrops via
 	// TestAdmissionCandidateErlangConvergedSplitAdversarialProbe (host,
 	// admission_switch_erlang_converged_split_probe_test.go), and
 	// compactPackedGSSVersionOrder via
@@ -764,14 +765,12 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 	// parity held by TestParityCTopLevelDeclAmbiguity /
 	// TestParityCPreprocConditional.
 	//
-	// Re-pinned 2026-09-20 to grammars/grammar_blobs/c.bin SHA-256
-	// db0123b46b06dbfdb139e834dff30ceca3b8df123aac39865813a596eb819ef9
-	// after the tree-sitter-c bump to b780e47fc780. The reduce symbols keep
-	// their identity in the new blob: 324 translation_unit_repeat1, 326
-	// preproc_if_repeat1, 343 enumerator_list_repeat1. The cgo receipts
+	// At tree-sitter-c b780e47fc780 the reduce symbols are 324
+	// translation_unit_repeat1, 326 preproc_if_repeat1 and 343
+	// enumerator_list_repeat1. The cgo receipts
 	// TestParityCTopLevelDeclAmbiguity, TestParityCPreprocConditional,
 	// TestIssue667CEnumListsMatchCReference, TestCExternCWrapperParity, and
-	// TestStage6CCompactCertification pass against this blob.
+	// TestStage6CCompactCertification cover them.
 	"c": {
 		recoveryStackVersionOrder: true,
 		// Measurements on large C witnesses show identical trees before and after
@@ -853,6 +852,11 @@ var builtinLanguageRuntimeProfiles = map[string]builtinLanguageRuntimeProfile{
 	// enclosing command_argument_sep shape (TestPowerShellBacktickContinuationIsParserPadding).
 	"powershell": {
 		lineContinuationEscapeByte: '`',
+	},
+	// The indexed builder implements YAML's result normalization only behind
+	// the gts_compact_node_views build tag.
+	"yaml": {
+		compactNativeSelectedPublication: gotreesitter.CompactNativeSelectedExperimental,
 	},
 }
 
@@ -1009,6 +1013,11 @@ func attachBuiltinLanguageRuntimeProfile(name string, lang *gotreesitter.Languag
 	}
 	if profile.compactOwnedEOFRecovery && !lang.CompactOwnedEOFRecoveryCertified {
 		lang.CompactOwnedEOFRecoveryCertified = true
+		changed = true
+	}
+	if profile.compactNativeSelectedPublication != gotreesitter.CompactNativeSelectedUnqualified &&
+		lang.CompactNativeSelectedPublication != profile.compactNativeSelectedPublication {
+		lang.CompactNativeSelectedPublication = profile.compactNativeSelectedPublication
 		changed = true
 	}
 	if profile.compactRecoveryTrailingRetirement && !lang.CompactRecoveryTrailingLineageRetirementCertified {

@@ -2,13 +2,6 @@ package gotreesitter
 
 import "bytes"
 
-var httpCommentRunBlobSHA256 = [32]byte{
-	0x33, 0x2d, 0x50, 0xa1, 0x5b, 0x3f, 0xac, 0xb4,
-	0x07, 0xf6, 0xc4, 0x49, 0xfe, 0x8b, 0xbc, 0xd2,
-	0xfd, 0xa5, 0x5e, 0xff, 0xfe, 0xfb, 0xfd, 0x4d,
-	0x8d, 0x9c, 0xe2, 0xc7, 0x5f, 0xbb, 0x7b, 0xda,
-}
-
 // parseHTTPCommentRun reproduces the locked C parser's section boundaries
 // for a document made only of ordinary hash comments. Its grammar permits
 // ambiguous boundaries; C retains at most eight comments per section.
@@ -16,11 +9,6 @@ var httpCommentRunBlobSHA256 = [32]byte{
 func (p *Parser) parseHTTPCommentRun(source []byte) (*Tree, bool) {
 	if p == nil || p.language == nil || p.language.Name != "http" || len(p.included) != 0 ||
 		p.parseWorkLimits.configured() || len(source) == 0 {
-		return nil, false
-	}
-	// Admit only the grammar blob certified by the locked C oracle.
-	blob, ok := p.language.GrammarBlobSHA256()
-	if !ok || blob != httpCommentRunBlobSHA256 {
 		return nil, false
 	}
 	lines := 0

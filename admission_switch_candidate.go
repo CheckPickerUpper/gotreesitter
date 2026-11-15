@@ -106,8 +106,7 @@ func newAdmissionCandidateRunner(p *Parser) (*parserCoreFreshFullRunner, error) 
 	}
 	if p.hasRootSymbol && (core.ExternalLexerOwnsAllTerminals(p.language.TokenCount, p.language.ExternalSymbols) ||
 		!p.language.CompactLexerSkippedPrefixTilingCertified && classifyExternalScannerQuiescence(p.language) == scannerQuiescenceProven) {
-		identity, valid := tables.TableIdentity()
-		runner.scratch.nativeProjection = &nativeProjectionWorkspace{compactViews: valid && compactNodeViewsForContract(identity)}
+		runner.scratch.nativeProjection = &nativeProjectionWorkspace{compactViews: compactNodeViewsForLanguage(p.language)}
 	}
 	return runner, nil
 }

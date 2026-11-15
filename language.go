@@ -445,6 +445,25 @@ const (
 	LegacyMergeAdmitMixedRepresentation
 )
 
+// CompactNativeSelectedPublication says how far the compact candidate route's
+// indexed builder implements a grammar's result normalization, and so which
+// native selected results the route may publish for it. The zero value
+// publishes none.
+type CompactNativeSelectedPublication uint8
+
+const (
+	// CompactNativeSelectedUnqualified publishes no native selected result.
+	CompactNativeSelectedUnqualified CompactNativeSelectedPublication = iota
+
+	// CompactNativeSelectedExperimental publishes native node views only in
+	// builds with the gts_compact_node_views tag.
+	CompactNativeSelectedExperimental
+
+	// CompactNativeSelectedQualified publishes native node views and the
+	// grammar's type-argument policy in every build.
+	CompactNativeSelectedQualified
+)
+
 // FullParseAcceptedErrorRetryProfile certifies narrow full-parse retry
 // policies. When a fresh full parse accepts an error-bearing tree that covers
 // EOF, the parser may keep the initial GLR stack ceiling after the ordinary
@@ -933,6 +952,11 @@ type Language struct {
 	// shared recovery or sibling drops. Other recovery grants remain separate.
 	// Custom, adapted, and stale artifacts retain the false default.
 	CompactOwnedEOFRecoveryCertified bool
+
+	// CompactNativeSelectedPublication selects the native selected results the
+	// compact candidate route publishes. Custom and adapted languages retain
+	// the unqualified default.
+	CompactNativeSelectedPublication CompactNativeSelectedPublication
 
 	// CompactRecoveryTrailingLineageRetirementCertified permits the compact
 	// scheduler to retire one trailing no-action missing lineage after the

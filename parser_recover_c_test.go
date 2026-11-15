@@ -2900,21 +2900,6 @@ func TestCCollectPotentialReductionsEOFRecoverySentinel(t *testing.T) {
 	}
 }
 
-func TestCRecoveryEOFSentinelRequiresCertifiedBlob(t *testing.T) {
-	lang := &Language{Name: "scala"}
-	if cRecoveryEOFSentinelCertified(lang) {
-		t.Fatal("Scala name alone enabled the EOF sentinel")
-	}
-	lang.grammarBlobSHA256Valid = true
-	if cRecoveryEOFSentinelCertified(lang) {
-		t.Fatal("uncertified Scala blob enabled the EOF sentinel")
-	}
-	lang.grammarBlobSHA256 = cRecoveryEOFSentinelScalaBlobSHA256
-	if !cRecoveryEOFSentinelCertified(lang) {
-		t.Fatal("certified Scala blob did not enable the EOF sentinel")
-	}
-}
-
 func TestCDoAllPotentialReductionsDistinguishesEOFFromAnyLookahead(t *testing.T) {
 	lang := &Language{
 		TokenCount:  2,

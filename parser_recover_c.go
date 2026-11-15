@@ -226,21 +226,11 @@ const (
 	cRecoverMaxSharedVersions = cRecoverMaxVersionCount + 4 + 1
 )
 
-// Native EOF trials use the exact Scala blob covered by the locked-C suffix
-// differential. Other blobs retain the exact-row trial until certified.
-var cRecoveryEOFSentinelScalaBlobSHA256 = [32]byte{
-	0xb3, 0x19, 0xfb, 0x9e, 0x03, 0x0c, 0x13, 0xc9,
-	0x9c, 0x85, 0x2c, 0xd0, 0xb0, 0x9b, 0x76, 0xbc,
-	0x97, 0x5f, 0xbd, 0x63, 0xc8, 0xb6, 0xd6, 0x99,
-	0x9d, 0x71, 0x18, 0x65, 0xec, 0x9a, 0x58, 0x62,
-}
-
+// cRecoveryEOFSentinelCertified reports whether native EOF trials run for
+// lang. Scala's are covered by the locked-C suffix differential; other
+// grammars retain the exact-row trial until certified.
 func cRecoveryEOFSentinelCertified(lang *Language) bool {
-	if lang == nil || lang.Name != "scala" {
-		return false
-	}
-	blobSHA256, ok := lang.GrammarBlobSHA256()
-	return ok && blobSHA256 == cRecoveryEOFSentinelScalaBlobSHA256
+	return lang != nil && lang.Name == "scala"
 }
 
 // errorCostCompetitionLanguage reports whether the faithful C error-recovery

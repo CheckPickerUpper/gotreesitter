@@ -2,8 +2,6 @@
 
 package parsercorephase0
 
+// NativeNodeViewsEnabled reports whether this build publishes experimental
+// native node views.
 const NativeNodeViewsEnabled = false
-
-func NativeNodeViewsForContract(identity [32]byte) bool {
-	return NativeSelectedSnapshotDefaultContract(identity)
-}
