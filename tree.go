@@ -3361,7 +3361,7 @@ func (t *Tree) ensureResultCompatibility() {
 		compatibilitySnapshot := snapshotCompactCompatibilityTree(t.root, hadCompactLineage)
 		if !parsePhaseTimingEnabled() {
 			parser := &Parser{language: t.language}
-			result := normalizeResultCompatibility(t.root, t.source, parser, nil)
+			result := normalizeResultCompatibility(t.root, t.parsedInput(), parser, nil)
 			t.resultErrorSummary = result.errorSummary
 			t.resultCompatibilityApplied = !resultMaterializationShouldStop(result.stopReason)
 			t.disableIncrementalReuseAfterCompactCompatibility(compatibilitySnapshot)
@@ -3382,7 +3382,7 @@ func (t *Tree) ensureResultCompatibility() {
 			materializationTiming: timing,
 		}
 		start := materializationTimingStart(timing)
-		result := normalizeResultCompatibility(t.root, t.source, parser, nil)
+		result := normalizeResultCompatibility(t.root, t.parsedInput(), parser, nil)
 		t.resultErrorSummary = result.errorSummary
 		t.resultCompatibilityApplied = !resultMaterializationShouldStop(result.stopReason)
 		t.disableIncrementalReuseAfterCompactCompatibility(compatibilitySnapshot)

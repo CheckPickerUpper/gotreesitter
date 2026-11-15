@@ -91,16 +91,13 @@ func TestAdmissionRecoverEOFIncrementalMarkerFallsBackForUncertifiedScanner(t *t
 		profile.OldTreeReuseRoute || profile.ReusedSubtrees != 0 || profile.ReusedBytes != 0 {
 		t.Fatalf("recover_eof marker did not fail closed for the uncertified scanner: %+v", profile)
 	}
-	// YAML's lex state after "]" accepts the end token at byte 0, before the
-	// newline, so the parse and its root end there, as in C.
-	const endTokenByte = 0
 	runtime := got.ParseRuntime()
 	if runtime.StopReason != gts.ParseStopAccepted || !runtime.LastTokenWasEOF ||
-		runtime.SourceLen != uint32(len(newSource)) || runtime.LastTokenEndByte != endTokenByte ||
-		runtime.ExpectedEOFByte != endTokenByte || runtime.RootEndByte != endTokenByte ||
+		runtime.SourceLen != uint32(len(newSource)) || runtime.LastTokenEndByte != uint32(len(newSource)) ||
+		runtime.ExpectedEOFByte != uint32(len(newSource)) || runtime.RootEndByte != uint32(len(newSource)) ||
 		runtime.RootEndByte != got.RootNode().EndByte() ||
 		runtime.IncrementalOldTreeReuseRoute {
-		t.Fatalf("recover_eof fallback runtime=%+v, want the end token at byte %d", runtime, endTokenByte)
+		t.Fatalf("recover_eof fallback runtime=%+v, want fresh EOF at %d", runtime, len(newSource))
 	}
 }
 

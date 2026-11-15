@@ -66,9 +66,8 @@ const (
 	// recovery token while parser state zero selected the error lex mode.
 	tokenFlagErrorModeLexed
 	// tokenFlagInternalDFALexed proves that Lexer.scan accepted this token
-	// from the internal DFA, including an end token a lex state accepted
-	// before the input ended. External, generated, missing, and the end
-	// token at the end of input omit it.
+	// from the internal DFA. External, generated, missing, and EOF tokens
+	// omit it.
 	tokenFlagInternalDFALexed
 	// tokenFlagKeyword records the keyword promotion path.
 	tokenFlagKeyword
@@ -396,22 +395,24 @@ const (
 	lexScanSkipped
 	// lexScanToken means the scan accepted a grammar token.
 	lexScanToken
-	// lexScanEnd means the scan accepted the end token, which tree-sitter's
-	// ACCEPT_TOKEN(ts_builtin_sym_end) accepts at any position, not only at
-	// the end of input. The token is zero-width at the accepting position.
+	// lexScanEnd means the scan accepted the end token. The token is
+	// zero-width at the end of input.
 	lexScanEnd
 )
 
 // acceptance returns what reaching the state accepts. A separator's skip
 // wins over the token it matches, and the end token is accepted only by a
-// state that accepts nothing else.
-func (st *LexState) acceptance() lexScanOutcome {
+// state that accepts nothing else, and only at the end of input.
+// tree-sitter's ACCEPT_TOKEN(ts_builtin_sym_end) accepts at any position;
+// this lexer does not until the parser runs tree-sitter's error recovery on
+// the end token it would get.
+func (st *LexState) acceptance(atInputEnd bool) lexScanOutcome {
 	switch {
 	case st.Skip:
 		return lexScanSkipped
 	case st.AcceptToken > 0:
 		return lexScanToken
-	case st.AcceptEOF:
+	case st.AcceptEOF && atInputEnd:
 		return lexScanEnd
 	default:
 		return lexScanFailed
@@ -509,7 +510,7 @@ func (l *Lexer) scanContiguousInto(startState uint32, startPos int, startRow, st
 		}
 		st := &l.states[int(curState)]
 
-		if kind := st.acceptance(); kind != lexScanFailed {
+		if kind := st.acceptance(scanPos >= len(l.source)); kind != lexScanFailed {
 			// Reject immediate tokens that matched after whitespace was
 			// consumed. Immediate tokens must match at the original position.
 			isImmediate := st.AcceptToken > 0 && int(st.AcceptToken) < len(l.immediateTokens) && l.immediateTokens[st.AcceptToken]
@@ -652,7 +653,7 @@ func (l *Lexer) scanContiguousInto(startState uint32, startPos int, startRow, st
 			EndByte:                 uint32(acceptPos),
 			StartPoint:              Point{Row: acceptStartRow, Column: acceptStartCol},
 			EndPoint:                Point{Row: acceptRow, Column: acceptCol},
-			lexFlags:                lexFlagIf(skippedPrefix, tokenFlagSkippedPrefix) | lexFlagIf(acceptKind == lexScanEnd, tokenFlagInternalDFALexed),
+			lexFlags:                lexFlagIf(skippedPrefix, tokenFlagSkippedPrefix),
 			lexerSkippedPrefixStart: uint32(startPos),
 			lexerLookaheadEndByte:   lookaheadEndByte,
 		}

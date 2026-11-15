@@ -311,7 +311,7 @@ func (l *Lexer) scanIncluded(startState uint32, startPos int, startRow, startCol
 		}
 		st := &l.states[int(curState)]
 
-		if kind := st.acceptance(); kind != lexScanFailed {
+		if kind := st.acceptance(scanCursor.rangeIdx >= len(l.includedRanges)); kind != lexScanFailed {
 			isImmediate := st.AcceptToken > 0 && int(st.AcceptToken) < len(l.immediateTokens) && l.immediateTokens[st.AcceptToken]
 			skippedWhitespace := tokenStart.pos > startPos
 			zeroWidthVisible := st.AcceptToken > 0 && scanCursor.pos == tokenStart.pos && !l.allowsZeroWidthToken(st.AcceptToken)
@@ -427,7 +427,7 @@ func (l *Lexer) scanIncluded(startState uint32, startPos int, startRow, startCol
 			EndByte:                 uint32(acceptPos),
 			StartPoint:              Point{Row: acceptStart.row, Column: acceptStart.col},
 			EndPoint:                Point{Row: acceptRow, Column: acceptCol},
-			lexFlags:                lexFlagIf(skippedPrefix, tokenFlagSkippedPrefix) | lexFlagIf(acceptKind == lexScanEnd, tokenFlagInternalDFALexed),
+			lexFlags:                lexFlagIf(skippedPrefix, tokenFlagSkippedPrefix),
 			lexerSkippedPrefixStart: uint32(startPos),
 			lexerLookaheadEndByte:   lookaheadEndByte,
 		}, acceptKind

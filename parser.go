@@ -5430,14 +5430,7 @@ func (p *Parser) parseInternal(source []byte, ts TokenSource, reuse *reuseCursor
 		lastTokenSymbol = t.Symbol
 		lastTokenWasEOF = t.Symbol == 0 && t.StartByte == t.EndByte && !t.NoLookahead
 		if lastTokenWasEOF && t.EndByte < expectedEOFByte {
-			if t.lexerInternalDFALexed() {
-				// The lex state accepted the end token here, so the input
-				// ends here and the root ends at this token, as in C.
-				expectedEOFByte = t.EndByte
-				parseRuntime.ExpectedEOFByte = t.EndByte
-			} else {
-				tokenSourceEOFEarly = true
-			}
+			tokenSourceEOFEarly = true
 		}
 	}
 	computeStopDiagnosticRecoverAction := func() bool {
@@ -5681,6 +5674,9 @@ func (p *Parser) parseInternal(source []byte, ts TokenSource, reuse *reuseCursor
 		recordStopDiagnostic(parseRuntime.StopReason, tree)
 		p.copyNormalizationStats(&parseRuntime)
 		if tree != nil {
+			// The result was built over the parsed input; the tree holds the
+			// caller's whole source.
+			tree.source = source
 			tree.setIncludedRanges(p.included)
 			tree.setParseRuntime(parseRuntime)
 			if reuse == nil && oldTree == nil {
@@ -5754,7 +5750,7 @@ func (p *Parser) parseInternal(source []byte, ts TokenSource, reuse *reuseCursor
 		}
 		tree := p.buildResultFromGLR(
 			treeStacks,
-			source,
+			parsedInput(source, expectedEOFByte),
 			arena,
 			oldTree,
 			reuseState,
@@ -5793,7 +5789,7 @@ func (p *Parser) parseInternal(source []byte, ts TokenSource, reuse *reuseCursor
 		if invariantTree := recoveredResultInvariantErrorTree(nodes, source, p.language, arena); invariantTree != nil {
 			return finalizeTree(invariantTree, ParseStopInvariantViolation)
 		}
-		tree := p.buildResultFromNodes(nodes, source, arena, oldTree, reuseState, &scratch.nodeLinks)
+		tree := p.buildResultFromNodes(nodes, parsedInput(source, expectedEOFByte), arena, oldTree, reuseState, &scratch.nodeLinks)
 		if root := rawRootOrNil(tree); root != nil {
 			normalizeSQLRecoveredMissingNull(root, arena, p.language)
 			for _, child := range root.children {
