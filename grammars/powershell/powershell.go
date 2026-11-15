@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "bb15be2e939a75bc80ea56d6606f43dea101bf7437ac82073f61985c4dee2492"
-
 func init() {
 	grammarruntime.RegisterPowershellSupport()
 	grammarruntime.RegisterBlob("powershell", grammarblobs.Powershell)

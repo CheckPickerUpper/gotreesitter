@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "b4419fe4c29bb56001426c17c8775133b553ca9db62e4d101c16ca61f8a157ca"
-
 func init() {
 	grammarruntime.RegisterOcamlSupport()
 	grammarruntime.RegisterBlob("ocaml", grammarblobs.Ocaml)

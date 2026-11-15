@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "47b5e137e1812731d3760444cb57a7e5c49e0757929b1c8f37e4c16752e5d6c2"
-
 func init() {
 	grammarruntime.RegisterFortranSupport()
 	grammarruntime.RegisterBlob("fortran", grammarblobs.Fortran)

@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "ff3220ac992d281de156b9bd90e0a04e7f8d7015feaf6c356fdb973f15bb434e"
-
 func init() {
 	grammarruntime.RegisterMatlabSupport()
 	grammarruntime.RegisterBlob("matlab", grammarblobs.Matlab)

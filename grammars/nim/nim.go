@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "ab35a5bf26bf423e17c8743fd6b68cfe7b899dda4a0f99c522208a85d7bd081f"
-
 func init() {
 	grammarruntime.RegisterNimSupport()
 	grammarruntime.RegisterBlob("nim", grammarblobs.Nim)

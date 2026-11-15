@@ -3,7 +3,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"flag"
 	"fmt"
 	"go/ast"
@@ -191,10 +190,6 @@ func generate(check bool) error {
 		if !token.IsIdentifier(name) && name != "go" {
 			return fmt.Errorf("invalid grammar name %q", name)
 		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
 		accessor := strings.ToUpper(name[:1]) + name[1:]
 		setup := ""
 		if fn := supports[name]; fn != "" {
@@ -220,12 +215,10 @@ import (
 grammarblobs "github.com/odvcencio/gotreesitter/grammars/grammar_blobs"
 grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "%x"
 func init() { %s; grammarruntime.RegisterBlob(%q, grammarblobs.%s) }
 // Language returns the cached grammar with its scanner and certified runtime profile.
 func Language() *gotreesitter.Language { return grammarruntime.Language(%q) }
-`, name, marker, pkg, name, pkg, sha256.Sum256(data), setup, name, accessor, name+".bin")
+`, name, marker, pkg, name, pkg, setup, name, accessor, name+".bin")
 		for path, source := range map[string]string{
 			"grammars/grammar_blobs/" + name + ".go": blob,
 			"grammars/" + name + "/" + name + ".go":  wrapper,

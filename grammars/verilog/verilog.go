@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "a5471f53d6ca265fbbaac657cbe4f7763e2ff5667786ed8d26355f1ea9b99a35"
-
 func init() { ; grammarruntime.RegisterBlob("verilog", grammarblobs.Verilog) }
 
 // Language returns the cached grammar with its scanner and certified runtime profile.

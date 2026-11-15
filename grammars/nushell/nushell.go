@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "b1c447d1cef9815c095c60d60a68e788f426e43b3510e6893612fef598dd9f4a"
-
 func init() {
 	grammarruntime.RegisterNushellSupport()
 	grammarruntime.RegisterBlob("nushell", grammarblobs.Nushell)

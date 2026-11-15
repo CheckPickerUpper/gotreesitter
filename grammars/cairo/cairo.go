@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "1a5a4cce20bd003fb0d043e75a24540005b0172bbda618df1586f27d73c97baf"
-
 func init() {
 	grammarruntime.RegisterCairoSupport()
 	grammarruntime.RegisterBlob("cairo", grammarblobs.Cairo)

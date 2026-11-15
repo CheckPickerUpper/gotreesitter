@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "2c33de9d3e7ed39082456a9e2657c7e053fbcbd2f4071cc2e22d2bb405e6d4d4"
-
 func init() {
 	grammarruntime.RegisterSquirrelSupport()
 	grammarruntime.RegisterBlob("squirrel", grammarblobs.Squirrel)

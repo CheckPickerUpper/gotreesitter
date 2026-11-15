@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "9d5a743e119dda948c2c63e0a1fba8f0f55cbc67c262d658cb96539d07aa9398"
-
 func init() {
 	grammarruntime.RegisterCobolSupport()
 	grammarruntime.RegisterBlob("cobol", grammarblobs.Cobol)

@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "be805d7ba5a305333f6492dba3a656e9d413915e9c3dfa2eb08d001fcfa6a7b9"
-
 func init() {
 	grammarruntime.RegisterCudaSupport()
 	grammarruntime.RegisterBlob("cuda", grammarblobs.Cuda)

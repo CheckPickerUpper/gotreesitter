@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "dfa9e4bbccc88516d47bde22fcf5cc2d8822d84b80d3d4cb0ea76079e1cc0377"
-
 func init() {
 	grammarruntime.RegisterAgdaSupport()
 	grammarruntime.RegisterBlob("agda", grammarblobs.Agda)

@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "9ddb5d9b74c06eb3f3f9eba98be968719eff298d86ee9aa046009ed0a868b676"
-
 func init() { ; grammarruntime.RegisterBlob("enforce", grammarblobs.Enforce) }
 
 // Language returns the cached grammar with its scanner and certified runtime profile.

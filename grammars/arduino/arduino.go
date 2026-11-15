@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "8cfea7d98636a7c1916dd9a6b21527f1a59787f730def32feb9a782f2770c102"
-
 func init() {
 	grammarruntime.RegisterArduinoSupport()
 	grammarruntime.RegisterBlob("arduino", grammarblobs.Arduino)

@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "354d75997fe72c80d9ba253c8cf21e079ddabb44467cb610e029382bdd687040"
-
 func init() {
 	grammarruntime.RegisterStarlarkSupport()
 	grammarruntime.RegisterBlob("starlark", grammarblobs.Starlark)

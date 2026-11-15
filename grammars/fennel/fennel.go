@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "63c25f9a4e06a7535506ea5601e946e272da3caab60ee8cf1dee9b55a7d568e7"
-
 func init() {
 	grammarruntime.RegisterFennelSupport()
 	grammarruntime.RegisterBlob("fennel", grammarblobs.Fennel)

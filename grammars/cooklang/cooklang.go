@@ -10,9 +10,6 @@ import (
 	grammarruntime "github.com/odvcencio/gotreesitter/grammars/runtime"
 )
 
-// BlobSHA256 identifies the packaged grammar artifact.
-const BlobSHA256 = "2fd57f20461bcc0830fd14420cd06ad08750dd3cbbc440670e63056d59b3692a"
-
 func init() {
 	grammarruntime.RegisterCooklangSupport()
 	grammarruntime.RegisterBlob("cooklang", grammarblobs.Cooklang)
